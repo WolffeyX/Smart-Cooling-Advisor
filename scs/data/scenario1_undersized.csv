@@ -1,0 +1,5 @@
+strategy,kWh,ToU_RM,kWh_14_18,mean_daily_peak_kW_14_18,hot_hours,degree_hours>26
+never_precool,1164.2,579.1,473.1,1.834,184,138.3
+always_precool,1173.1,583.4,473.0,1.834,183,138.1
+AI_precool,1172.3,583.0,473.0,1.834,183,138.1
+perfect_precool,1170.5,582.1,473.1,1.834,183,138.2

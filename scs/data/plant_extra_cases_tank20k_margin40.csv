@@ -1,0 +1,5 @@
+case,calendar_rule_vs_full_%,AI_vs_full_%,perfect_vs_full_%,AI_day_EC_hours,full_day_EC_hours,cal_day_EC_hours,unmet_full/cal/AI/perfect,AI_beyond_calendar_MWh,capture_vs_perfect_%
+"Tank 20,000 RTh, Oct-Dec",-20.1,-21.9,-22.5,15,0,3,0/0/0/0,7.9,77.0
+"Tank 20,000 RTh, Apr-Jul",-17.3,-17.4,-17.4,67,0,127,0/0/0/0,0.1,50.0
+"Tank 20,000 RTh + 3,000 RT discharge, Apr-Jul",-17.3,-17.4,-17.4,67,0,127,0/0/0/0,0.1,50.0
+"40% margin, noisy 10%, Oct-Dec",-5.0,-6.2,-9.8,25,15,15,361/361/361/361,4.6,25.0

@@ -1,0 +1,7 @@
+strategy,EC_MWh,EC_day_MWh,EC_day_run_hours,EC_day_peak_kW,mean_day_EC_kW_14_18,TES_charged_MWh_th,unmet_RTh,EC_vs_always_full_%
+always_full,373.7,0.0,0,0.0,0.0,1806.1,0.0,0.0
+calendar_rule,346.4,0.4,3,236.0,1.2,1694.0,0.0,-7.3
+persistence,349.8,25.7,55,810.0,66.9,1579.6,0.0,-6.4
+AI_calendar_weather_today,338.2,9.7,29,648.0,26.4,1610.6,0.0,-9.5
+AI_plus_dayahead_weather,338.9,3.1,15,614.0,8.6,1642.4,0.0,-9.3
+perfect,336.5,8.5,66,172.0,23.0,1598.6,0.0,-10.0

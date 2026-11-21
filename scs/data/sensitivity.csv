@@ -1,0 +1,13 @@
+variant,S1_kWh,SR_vs_S1_%,S2full_vs_S1_%,S2setpt_vs_S1_%,S3perfect_vs_S1_%,S2full_ToU_RM_vs_S1_%,S2full_hot_hrs
+Base case,1238.0,-5.2,0.9,-3.0,-1.8,0.7,6
+Half occupancy (15 people),841.0,-6.0,0.5,-3.4,-2.6,0.4,5
+"Empty room (0 people, lights on)",507.0,-6.4,-2.2,-3.7,-6.0,-2.2,15
+Leakier room (UA +30%),1311.0,-5.7,0.8,-3.3,-2.2,0.7,6
+Tighter room (UA -30%),1170.0,-4.5,0.9,-2.6,-1.4,0.8,2
+Light building (mass x0.5),1239.0,-4.7,0.4,-2.6,-2.1,0.3,5
+Heavy building (mass x2),1240.0,-5.5,1.2,-3.3,-1.6,1.0,5
+Weak outdoor COP effect (1.5%/C),1315.0,-5.3,0.9,-3.1,-1.8,0.8,6
+Strong outdoor COP effect (3.5%/C),1170.0,-5.0,0.9,-2.9,-1.8,0.7,6
+No indoor-setpoint COP effect,1163.0,-4.1,0.4,-2.3,-1.8,0.3,6
+No latent (humidity) load,624.0,-4.7,2.1,-2.4,-0.7,1.8,6
+Bigger windows (12 m2),1332.0,-4.9,1.0,-2.9,-1.6,0.8,3

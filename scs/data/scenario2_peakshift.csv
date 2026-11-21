@@ -1,0 +1,6 @@
+strategy,kWh,ToU_RM,kWh_14_18,mean_daily_peak_kW_14_18,hot_hours,degree_hours>26
+S1_fixed_24C,1237.7,616.3,517.5,2.091,0,0.0
+always_shift,1202.0,594.3,400.1,1.609,0,0.0
+AI_shift,1200.6,593.6,400.8,1.611,0,0.0
+perfect_shift,1190.6,589.4,413.8,1.663,0,0.0
+always_raise_no_precool,1159.1,574.3,416.5,1.671,0,0.0
