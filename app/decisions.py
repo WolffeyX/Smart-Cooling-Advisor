@@ -41,6 +41,10 @@ _INPUTS = [
 ]
 
 
+def _now() -> datetime:
+    return datetime.now()
+
+
 def _r(x):
     return round(x, 1) if isinstance(x, float) else x
 
@@ -97,10 +101,11 @@ class DecisionLog:
             return next(csv.reader(f), None) == COLUMNS
 
     def _rotate(self) -> None:
-        dest = self.path.with_suffix(".old.csv")
+        stamp = _now().strftime("%Y%m%d-%H%M%S")
+        dest = self.path.with_name(f"{self.path.stem}.{stamp}.old.csv")
         n = 1
         while dest.exists():
-            dest = self.path.with_suffix(f".old{n}.csv")
+            dest = self.path.with_name(f"{self.path.stem}.{stamp}-{n}.old.csv")
             n += 1
         self.path.replace(dest)
 

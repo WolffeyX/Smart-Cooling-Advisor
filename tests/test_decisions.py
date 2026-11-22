@@ -1,4 +1,5 @@
 import csv
+import re
 import threading
 from datetime import datetime
 
@@ -102,12 +103,29 @@ def test_csv_download_header(client, log):
 
 def test_header_mismatch_rotates_old_file(tmp_path):
     p = tmp_path / "log.csv"
-    p.write_text("a,b\n1,2\n")
+    p.write_bytes(b"a,b\r\n1,2\r\n")
     dl = DecisionLog(p)
     dl.append(dict.fromkeys(COLUMNS, "x"))
-    assert (tmp_path / "log.old.csv").read_text() == "a,b\n1,2\n"
+    olds = list(tmp_path.glob("*.old.csv"))
+    assert len(olds) == 1
+    assert re.search(r"^log\.\d{8}-\d{6}(-\d+)?\.old\.csv$", olds[0].name)
+    assert olds[0].read_bytes() == b"a,b\r\n1,2\r\n"
     rows = _read(p)
     assert len(rows) == 1 and list(rows[0].keys()) == COLUMNS
+
+
+def test_two_rotations_same_second_are_distinct(tmp_path, monkeypatch):
+    monkeypatch.setattr(decisions, "_now", lambda: datetime(2026, 11, 22, 15, 30, 12))
+    p = tmp_path / "log.csv"
+    dl = DecisionLog(p)
+    p.write_text("a\n1\n")
+    dl.append(dict.fromkeys(COLUMNS, "x"))
+    p.write_text("b\n2\n")
+    dl.append(dict.fromkeys(COLUMNS, "y"))
+    olds = sorted(f.name for f in tmp_path.glob("*.old.csv"))
+    assert olds == ["log.20261122-153012-1.old.csv", "log.20261122-153012.old.csv"]
+    contents = {(tmp_path / n).read_text() for n in olds}
+    assert contents == {"a\n1\n", "b\n2\n"}
 
 
 def test_concurrent_appends(tmp_path):
