@@ -78,7 +78,10 @@
       return_sac: row.sac_rt,
       return_sac2: row.sac_rt,
       sac0_campus: row.sac_rt,
-      return_ec: row.ec_out_rt,
+      return_ec: row.ec_count > 0 ? row.ec_out_rt : 0,
+      ret_hdr1: row.ec_count > 1 ? row.ec_out_rt : 0,
+      ret_hdr2: row.ec_count > 2 ? row.ec_out_rt : 0,
+      ret_hdr3: row.ec_count > 3 ? row.ec_out_rt : 0,
       // each EC's return branch carries flow only while that EC runs (ECs 0..ec_count-1)
       ret_ec0: 0 < row.ec_count ? row.ec_out_rt : 0,
       ret_ec1: 1 < row.ec_count ? row.ec_out_rt : 0,
