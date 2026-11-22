@@ -97,8 +97,21 @@ FEATURE_PROVENANCE: dict[str, str] = {
 TRAINING_MONTHS_OCT_DEC = list(range(1, 10))
 
 
-def build_features(g: pd.DataFrame, seed: int = 0) -> pd.DataFrame:
+def _window_22h(values: np.ndarray, times: pd.Series, how: str) -> pd.Series:
+    """24 h ending at 21:00 of each date (22:00 the day before .. 21:00), indexed by NEXT date."""
+    r = pd.Series(np.asarray(values, dtype=float), index=pd.DatetimeIndex(times)).rolling(24)
+    agg = getattr(r, how)()
+    agg = agg[agg.index.hour == 21]
+    agg.index = agg.index.normalize() + pd.Timedelta(days=1)
+    return agg
+
+
+def build_features(g: pd.DataFrame, weather: pd.DataFrame, total_rt: np.ndarray,
+                   seed: int = 0) -> pd.DataFrame:
     """Features for forecasting day D at 22:00 on D-1 (mirrors step5 forecasts(), Xw set).
+
+    Deviation from step5: load/tmean/himax/rain use the 24 h window 22:00 D-2..21:00 D-1, not the
+    calendar day D-1, because the latter includes 22:00-23:00 readings after the decision time.
 
     Observed values are lagged (shift 1 / 7); the day-ahead weather forecast is the actual plus
     simulated NWP-like noise, drawn in step5's order (tmax, sw, rain) over the full length of g.
@@ -106,10 +119,11 @@ def build_features(g: pd.DataFrame, seed: int = 0) -> pd.DataFrame:
     rng = np.random.default_rng(seed)
     X = pd.DataFrame(index=g.index)
     X["need_today"] = g["need_rth"].shift(1)
-    X["load_today"] = g["load_rth"].shift(1)
-    X["tmean_today"] = g["tmean"].shift(1)
-    X["himax_today"] = g["himax"].shift(1)
-    X["rain_today"] = g["rain"].shift(1)
+    t = weather["time"]
+    X["load_today"] = _window_22h(total_rt, t, "sum").reindex(g.index)
+    X["tmean_today"] = _window_22h(weather["temp"].values, t, "mean").reindex(g.index)
+    X["himax_today"] = _window_22h(weather["hi"].values, t, "max").reindex(g.index)
+    X["rain_today"] = _window_22h(weather["rain"].values, t, "sum").reindex(g.index)
     X["need_lastweek"] = g["need_rth"].shift(7)
     X["dow_tomorrow"] = g["dow"]
     X["weekday_tomorrow"] = g["weekday"].astype(int)
