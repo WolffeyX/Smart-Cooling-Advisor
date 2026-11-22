@@ -13,10 +13,13 @@ def _ts(s):
 def test_models_kept_and_predictions_unchanged(bank):
     fc = bank.forecasts
     assert set(fc.models) == {"oct_dec", *[f"m{i}" for i in range(1, 10)]}
+    by_key: dict[str, list] = {}
     for D in fc.eligible:
-        k = fc.model_key_by_day[D]
-        pred = fc.models[k].predict(bank.features.loc[[D]])[0]
-        assert pred == pytest.approx(fc.ai[D], abs=1e-9)
+        by_key.setdefault(fc.model_key_by_day[D], []).append(D)
+    for k, days in by_key.items():
+        preds = fc.models[k].predict(bank.features.loc[days])
+        for D, pred in zip(days, preds, strict=True):
+            assert pred == pytest.approx(fc.ai[D], abs=1e-9)
     assert fc.model_key_by_day[_ts("2024-10-23")] == "oct_dec"
     assert fc.model_key_by_day[_ts("2024-03-12")] == "m3"
     assert set(fc.calendar_by_model) == set(fc.models)

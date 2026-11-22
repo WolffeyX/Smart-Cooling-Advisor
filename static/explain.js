@@ -138,6 +138,7 @@
       `Trained on ${monthList(ex.training_months)} (${ex.n_training_days} days, ${ex.n_trees} trees, min ${ex.min_samples_leaf} days per leaf), ` +
       `then tested on the held-out months ${monthList(ex.held_out_months)}. On those months the random forest's mean absolute error was ` +
       `${nf0.format(ex.held_out_mae_ai_rth)} RTh against ${nf0.format(ex.held_out_mae_rule_rth)} RTh for the weekday/weekend rule (SIMULATED data). ` +
+      `${ex.model_key === "oct_dec" ? "October to December are kept out of training so the season comparison is out-of-sample. " : `Month ${ex.model_key.slice(1)} is left out so this forecast is out-of-sample. `}` +
       `The step-1 day-type classifier scored ${nf1.format(c.accuracy * 100)}% accuracy on ${monthList(c.test_months)} after training on ${monthList(c.train_months)} (${c.label}).`;
   }
 

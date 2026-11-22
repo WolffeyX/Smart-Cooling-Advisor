@@ -86,6 +86,7 @@
     setLabel("campus", `≈ ${fmt(plant.room_equivalents)} room-equivalents (SIMULATED)`, "");
     hook.ready = true;
     if (visible) api.render();
+    if (lastPick && !tip.hidden) showTip(lastPick.t, lastPick.x, lastPick.y);
   }
 
   // ---------- tooltip ----------
@@ -116,7 +117,9 @@
     }
   }
 
+  let lastPick = null;
   function showTip(t, x, y) {
+    lastPick = { t, x, y };
     const text = tipText(t);
     if (!text) { tip.hidden = true; return false; }
     tip.textContent = text;
@@ -207,5 +210,9 @@
       applyState();
       if (!box.hidden) startLoop();
     })
-    .catch(() => unavailable("3D view unavailable: the 3D scene could not be loaded. The 2D view is shown."));
+    .catch((err) => {
+      console.error(err);
+      setMode(false);
+      unavailable("3D view unavailable: the 3D scene could not be loaded. The 2D view is shown.");
+    });
 })();

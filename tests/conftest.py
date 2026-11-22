@@ -15,10 +15,17 @@ def bank(P):
 
 
 @pytest.fixture(scope="session")
-def client():
+def client(bank):
+    from unittest import mock
+
     from fastapi.testclient import TestClient
 
     from app import main
 
-    with TestClient(main.app) as c:
+    # reuse the session bank instead of rebuilding it in the lifespan; the real
+    # cold build is covered by test_api::test_cold_start_under_60s
+    with (
+        mock.patch.object(main, "build_day_bank", return_value=bank),
+        TestClient(main.app) as c,
+    ):
         yield c

@@ -69,7 +69,7 @@
     <p id="plant-caption" class="plant-caption"></p>
     <div id="plant-3d" class="plant-3d" hidden>
       <button type="button" id="reset-view" class="btn btn-ghost">Reset view</button>
-      <div id="plant-tooltip" class="plant-tooltip" role="status" hidden></div>
+      <div id="plant-tooltip" class="plant-tooltip" aria-live="off" hidden></div>
     </div>
     <svg id="plant-svg" viewBox="0 0 640 330" role="img" aria-label="Plant view: absorption chillers, electric chillers, storage tank and campus buildings"></svg>
     <p class="scrub-title"><span id="scrub-label">Time scrubber: tonight 22:00 &rarr; tomorrow 21:00</span> <span class="sim-tag">SIMULATED</span></p>
@@ -156,7 +156,7 @@
         <svg id="explain-impurity" role="img" aria-label="Impurity importance bars"></svg></figure>
     </div>
     <p class="note">Built-in (impurity) importance favours features with many split points; permutation importance measures how much held-out error rises when a feature is shuffled. Read the permutation numbers first; a negative value means shuffling did not hurt.</p>
-    <p id="explain-month-note" class="note">Month always shows 0 in the permutation chart by design: each model is tested on months outside its training range, so shuffling month changes nothing. It does not mean month doesn't matter.</p>
+    <p id="explain-month-note" class="note">Month always shows 0 by design: each model is tested only on months it never trained on, and shuffling month among those test days does not move any day across a month split. It does not mean month is unimportant.</p>
     <h3>3. How the <span id="explain-n-trees">&hellip;</span> trees voted</h3>
     <svg id="explain-hist" role="img" aria-label="Histogram of per-tree forecasts with the mean marked"></svg>
     <p id="explain-hist-note" class="note"></p>

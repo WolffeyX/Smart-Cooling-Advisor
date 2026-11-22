@@ -4,6 +4,7 @@ Run with the argument `guide` to capture only the per-panel guide crops (docs/gu
 """
 
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -245,6 +246,7 @@ def main():
             proc.wait(timeout=10)
         except subprocess.TimeoutExpired:
             proc.kill()
+        shutil.rmtree(log_dir, ignore_errors=True)
 
 
 if __name__ == "__main__":
