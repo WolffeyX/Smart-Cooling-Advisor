@@ -528,13 +528,37 @@ def _dist_seg(p, a, b):
     return sum((p[i] - (a[i] + t * ab[i])) ** 2 for i in range(3)) ** 0.5
 
 
+TOL_BOX = 0.35
+
+
 def test_3d_pipes_connected(page, server):
     errors = _open_3d(page, server)
     st = page.evaluate("window.__plant3d")
     boxes, ends, pts = st["boxes"], st["segmentEnds"], st["segmentPoints"]
-    assert {"campus_header", "to_academic", "to_evening", "to_base", "return"} <= set(ends)
+    assert {
+        "campus_header",
+        "to_academic",
+        "to_evening",
+        "to_base",
+        "return",
+        "return_ec",
+        "return_sac",
+        "ret_academic",
+        "ret_evening",
+        "ret_base",
+        "sac0_campus",
+    } <= set(ends)
     stubs = st["stubPoints"]
-    assert len(stubs) == 7
+    assert stubs == {}
+    # sac_campus ends exactly where the campus header starts (no overlapping tubes)
+    assert pts["sac_campus"][-1] == pts["campus_header"][0]
+    # every box is wired to some pipe (no dead-end SAC / EC / block)
+    for b in boxes:
+        assert any(
+            _dist_box(p, b) <= TOL_BOX
+            for q in pts.values()
+            for p in (q[0], q[-1])
+        ), f"{b['id']} has no pipe on it"
     TOL = 0.35
     lines = {**pts, **stubs}
     ends = {**ends, **{k: [q[0], q[-1]] for k, q in stubs.items()}}
@@ -560,8 +584,20 @@ def test_3d_block_stubs_follow_block_load(page, server):
     assert f["to_evening"] == hourly[15]["evening_rt"]
     assert f["to_base"] == hourly[15]["base_rt"]
     assert f["campus_header"] == hourly[15]["campus_load_rt"]
+    # idle key must hold for the return legs too: dim EC leg while no EC is on
+    assert hourly[15]["ec_count"] == 0
+    assert f["return_ec"] == 0
+    assert f["return_ec"] == hourly[15]["ec_out_rt"]
+    assert f["ret_academic"] == hourly[15]["academic_rt"] > 0
+    assert f["ret_evening"] == hourly[15]["evening_rt"]
+    assert f["ret_base"] == hourly[15]["base_rt"]
+    assert f["return_sac"] == hourly[15]["sac_rt"] > 0
+    assert f["return"] == hourly[15]["campus_load_rt"]
     page.evaluate("window.SCA.setHour(4)")
-    assert page.evaluate("window.__plant3d.flows.to_academic") == 0
+    f4 = page.evaluate("window.__plant3d.flows")
+    assert f4["to_academic"] == 0
+    assert f4["ret_academic"] == 0
+    assert f4["return_ec"] == hourly[4]["ec_out_rt"] > 0
     assert errors == []
 
 

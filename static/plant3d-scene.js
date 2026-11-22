@@ -13,9 +13,12 @@ const FLOOR_H = 1.3;
 const BLOCK_X = 13;
 const TANK_H = 8;
 
-// key -> [colour, points]; supply segments are blue, the warm return is orange.
+// key -> [colour, points]; supply segments are blue, the warm return is orange. Every pipe is a flow
+// segment driven by an API value, so a dim pipe always means that leg is idle this hour.
 const SEGMENTS = {
-  sac_campus: [BLUE, [[-12, 1.2, -9.6], [-8, 1.2, -11], [8, 1.2, -11], [8, 1.2, -8]]],
+  // SAC1 supply, then the campus header's start (SAC0 joins it at x = -8 through sac0_campus)
+  sac_campus: [BLUE, [[-12, 1.2, -9.6], [-8, 1.2, -11], [8, 1.2, -11]]],
+  sac0_campus: [BLUE, [[-12, 1.2, -6], [-8, 1.2, -6], [-8, 1.2, -11]]],
   ec_tank: [BLUE, [[-15, 0.6, 6.7], [-15, 0.6, 5], [-6, 0.6, 5], [-3, 0.9, 2], [-2.9, 0.9, 0.5]]],
   ec_campus: [BLUE, [[-8, 0.6, 6.7], [-8, 0.6, 6.2], [6, 0.6, 6.2], [8, 1.2, 3]]],
   tank_campus: [BLUE, [[3, 1.2, 0], [8, 1.2, 0]]],
@@ -24,20 +27,24 @@ const SEGMENTS = {
   to_academic: [BLUE, [[8, 1.2, -7], [10.5, 1.2, -7]]],
   to_evening: [BLUE, [[8, 1.2, 0], [10.5, 1.2, 0]]],
   to_base: [BLUE, [[8, 1.2, 7], [10.5, 1.2, 7]]],
-  // warm return: starts on the last block's east face, collects behind the blocks, runs west along z = -13,
-  // south along x = -19, then east along z = 10.5 and ends on the EC3 south face (z = 9.3)
-  return: [ORANGE, [[15.5, 0.5, 7], [17, 0.5, 7], [17, 0.5, -13], [-19, 0.5, -13], [-19, 0.5, 10.5], [-5, 0.5, 10.5], [-5, 0.5, 9.3]]],
+  // warm return: each block's east face has its own branch (own load) joining the trunk at x = 17
+  ret_academic: [ORANGE, [[15.5, 0.5, -7], [17, 0.5, -7]]],
+  ret_evening: [ORANGE, [[15.5, 0.5, 0], [17, 0.5, 0]]],
+  ret_base: [ORANGE, [[15.5, 0.5, 7], [17, 0.5, 7]]],
+  // trunk (campus load): collects behind the blocks, runs west along z = -13, south along x = -19
+  // and ends at the junction where the SAC and EC legs leave it
+  return: [ORANGE, [[17, 0.5, 7], [17, 0.5, -13], [-19, 0.5, -13], [-19, 0.5, 10.5]]],
+  // SAC return branches (sac_rt) leave the trunk and end on each absorption chiller's west face (x = -16.5)
+  return_sac: [ORANGE, [[-19, 0.5, -6], [-16.5, 0.5, -6]]],
+  return_sac2: [ORANGE, [[-19, 0.5, -9.6], [-16.5, 0.5, -9.6]]],
+  // EC leg (ec_out_rt): east along z = 10.5, branches to EC0-2 and ends on the EC3 south face (z = 9.3)
+  return_ec: [ORANGE, [[-19, 0.5, 10.5], [-5, 0.5, 10.5], [-5, 0.5, 9.3]]],
+  ret_ec0: [ORANGE, [[-16, 0.5, 10.5], [-16, 0.5, 9.3]]],
+  ret_ec1: [ORANGE, [[-12.4, 0.5, 10.5], [-12.4, 0.5, 9.3]]],
+  ret_ec2: [ORANGE, [[-8.8, 0.5, 10.5], [-8.8, 0.5, 9.3]]],
 };
-// thin static return branches (always shown): each one joins the trunk and ends on a component or block face
-const STUBS = [
-  [[15.5, 0.5, 0], [17, 0.5, 0]],
-  [[15.5, 0.5, -7], [17, 0.5, -7]],
-  [[-19, 0.5, -6], [-16.5, 0.5, -6]],
-  [[-19, 0.5, -9.6], [-16.5, 0.5, -9.6]],
-  ...[-16, -12.4, -8.8].map((x) => [[x, 0.5, 10.5], [x, 0.5, 9.3]]),
-];
 const ECS_X = [0, 1, 2, 3].map((i) => -16 + i * 3.6);
-export const STUB_POINTS = Object.fromEntries(STUBS.map((p, i) => [`stub${i}`, p]));
+export const STUB_POINTS = {}; // no static pipes remain; every pipe is a flow segment
 export const BOXES = [
   { id: "sac0", min: [-16.5, 0, -7.5], max: [-11.5, 2.5, -4.5] },
   { id: "sac1", min: [-16.5, 0, -11.1], max: [-11.5, 2.5, -8.1] },
@@ -125,11 +132,6 @@ export function createScene(container) {
         .position.set(BLOCK_X, 0.06 + f * FLOOR_H, b.z);
     }
     anchors[b.key] = new THREE.Vector3(BLOCK_X, h + 0.5, b.z);
-  }
-
-  // static thin return branches
-  for (const pts of STUBS) {
-    mk(new THREE.TubeGeometry(curveOf(pts), 12, 0.12, 5, false), ORANGE, { transparent: true, opacity: 0.5 });
   }
 
   // flow segments: a tube (dim when idle) plus particles (only while RT > 0)
