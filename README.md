@@ -40,6 +40,7 @@ python scripts/build_guide_pdf.py     # rebuild docs/user_guide.pdf
 - **Plant view, 2D and 3D.** A 2D | 3D toggle in the plant card. The 3D view (Three.js, vendored, no CDN) shows the absorption and electric chillers, the tank, three campus blocks and flowing pipes, driven by the same hour as the scrubber. Drag to orbit, scroll to zoom, Reset view. The 3D button is disabled when WebGL is missing.
 - **Approve or adjust, with a decision log.** Approve plan accepts the AI target. Adjust manually lets the operator type a charge target, preview it and confirm. Only Approve and a confirmed Adjust write a row, to `data/decision_log.csv` (git-ignored; newest 20 rows shown in the app; Download CSV link, `GET /decisions.csv`). The server recomputes every logged plan itself.
 - **How the AI decided.** A collapsible card that explains the random-forest forecast: the 12 inputs, permutation and built-in importance, how the 400 trees voted, one tree's path and the training process (`GET /explain`).
+- **Impact on this day.** The recommendation card shows kWh and CO₂ saved against always filling the tank and against the weekday/weekend rule, using the grid factor 0.740 kg CO₂/kWh (Energy Commission, Peninsular Malaysia 2024, provisional; an ASSUMPTION).
 - **Three campus blocks.** The synthetic load is split into Academic, Library and evening, and Data centre and labs (an ASSUMPTION), shown in the 3D view and the API.
 
 ![3D plant view](docs/screenshots/3d_night.png)
