@@ -126,6 +126,37 @@
   </figure>
 </section>
 
+<details id="explain" open class="card explain">
+  <summary>How the AI decided <span class="sim-tag">SIMULATED</span></summary>
+  <p class="note">This explains the random-forest forecast of tomorrow's tank need <strong>before the what-if error slider</strong> is applied, for the source day <span id="explain-date">&hellip;</span>. <span id="explain-forecast"></span></p>
+  <p id="explain-status" class="note" role="status">Loading the explanation&hellip;</p>
+  <div id="explain-body" hidden>
+    <h3>1. What the model saw (12 inputs)</h3>
+    <div class="tablewrap"><table id="explain-features">
+      <thead><tr><th>Input</th><th>Value</th><th>Where it comes from</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+    <h3>2. Which inputs matter</h3>
+    <div class="explain-two">
+      <figure><figcaption class="figtitle">Permutation importance: rise in held-out error when the input is shuffled (RTh, mean &plusmn; std)</figcaption>
+        <svg id="explain-perm" role="img" aria-label="Permutation importance bars"></svg></figure>
+      <figure><figcaption class="figtitle">Built-in (impurity) importance: share of the trees' error reduction</figcaption>
+        <svg id="explain-impurity" role="img" aria-label="Impurity importance bars"></svg></figure>
+    </div>
+    <p class="note">Built-in (impurity) importance favours features with many split points; permutation importance measures how much held-out error rises when a feature is shuffled. Read the permutation numbers first; a negative value means shuffling did not hurt.</p>
+    <p id="explain-month-note" class="note">Month always shows 0 in the permutation chart by design: each model is tested on months outside its training range, so shuffling month changes nothing. It does not mean month doesn't matter.</p>
+    <h3>3. How the 400 trees voted</h3>
+    <svg id="explain-hist" role="img" aria-label="Histogram of per-tree forecasts with the mean marked"></svg>
+    <p id="explain-hist-note" class="note"></p>
+    <h3>4. One tree's path (tree 1)</h3>
+    <ol id="explain-path"></ol>
+    <p id="explain-path-more" class="note"></p>
+    <p id="explain-path-end" class="note"></p>
+    <h3>5. Training and accuracy</h3>
+    <p id="explain-training"></p>
+  </div>
+</details>
+
 <section class="card">
   <div class="charthead"><h2>Same day, three ways to decide the charge</h2><span class="note">Electric-chiller energy for this 24 h &middot; SIMULATED</span></div>
   <div class="tablewrap">
@@ -162,6 +193,7 @@
 <footer class="foot">SIMULATED prototype. Synthetic campus load, one year of weather, no UTP plant data. The operator always decides.</footer>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 <script src="decisions.js"></script>
+<script src="explain.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

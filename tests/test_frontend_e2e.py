@@ -305,3 +305,65 @@ def test_edit_between_preview_and_response_disarms_confirm(page, server):
     page.fill("#override-input", "8000")
     page.wait_for_function("document.querySelector('#operator-note').textContent.includes('9,000')")
     assert page.is_disabled("#override-confirm")
+
+
+_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+_COUNT_EXPLAIN = """
+(() => {
+  window.__explainReqs = [];
+  const orig = window.fetch.bind(window);
+  window.fetch = (...args) => {
+    const url = String(args[0] && args[0].url ? args[0].url : args[0]);
+    if (url.includes('/explain')) window.__explainReqs.push(url);
+    return orig(...args);
+  };
+})();
+"""
+
+
+def test_explainer_matches_api(page, server):
+    _ready(page, server)
+    page.wait_for_selector("#explain-features tbody tr")
+    reco = page.request.post(f"{server}/recommend", data=BASE_BODY).json()
+    date = reco["scenario"]["source_date"]
+    ex = page.request.get(f"{server}/explain", params={"source_date": date}).json()
+    page.wait_for_selector("#explain-path li")
+    assert f"{round(ex['trees']['mean']):,}" in page.text_content("#explain-hist")
+    assert abs(reco["recommendation"]["ai_forecast_model_rth"] - ex["trees"]["mean"]) <= 0.5
+    assert page.locator("#explain-path li").count() == len(ex["path"]["splits"])
+    assert page.locator("#explain-features tbody tr").count() == 12
+    training = page.inner_text("#explain-training")
+    for m in ex["training_months"]:
+        assert _MONTHS[m - 1] in training
+    assert "400" in training
+    card = page.inner_text("#explain")
+    assert "SIMULATED" in card and "MEASURED" in card
+    assert "distinct training days reaching this split" in card
+    assert "month" in page.inner_text("#explain-month-note").lower()
+    assert page.locator("#explain-perm .bar").count() == 12
+    assert page.locator("#explain-impurity .bar").count() == 12
+    assert "before the what-if" in card
+
+
+def test_explainer_refetches_only_on_date_change(page, server):
+    page.add_init_script(_COUNT_EXPLAIN)
+    _ready(page, server)
+    page.wait_for_selector("#explain-path li")
+    assert page.evaluate("window.__explainReqs.length") == 1
+    first = page.get_attribute("#scenario-date", "data-date")
+    with page.expect_response("**/recommend"):
+        page.fill("#margin", "30")
+    page.wait_for_timeout(500)
+    assert page.evaluate("window.__explainReqs.length") == 1
+    new_temp = None
+    for t in (24, 26, 28, 33, 35, 38):
+        d = page.request.post(f"{server}/recommend", data={**BASE_BODY, "forecast_max_temp_c": t})
+        if d.json()["scenario"]["source_date"] != first:
+            new_temp = t
+            break
+    assert new_temp is not None
+    page.fill("#temp", str(new_temp))
+    page.wait_for_function("window.__explainReqs.length === 2")
+    page.wait_for_timeout(500)
+    assert page.evaluate("window.__explainReqs.length") == 2
