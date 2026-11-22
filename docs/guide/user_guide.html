@@ -69,15 +69,11 @@ figure img { display: block; max-width: 100%; height: auto; border: 1px solid va
 figcaption { font-size: .86rem; color: var(--muted); margin-top: 4px; max-width: 65ch; }
 .split { display: grid; grid-template-columns: minmax(0, 40%) minmax(0, 1fr); gap: 8px 22px; align-items: start; }
 .split > * { min-width: 0; }
-.split.wide { grid-template-columns: minmax(0, 46%) minmax(0, 1fr); }
-.split.narrow { grid-template-columns: minmax(0, 31%) minmax(0, 1fr); }
+.split.wide { grid-template-columns: minmax(0, 40%) minmax(0, 1fr); }
+.cropday { aspect-ratio: 678 / 330; object-fit: cover; object-position: 50% 38%; }
+.split.narrow { grid-template-columns: minmax(0, 30%) minmax(0, 1fr); }
 .pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; break-inside: avoid; }
 .pair > * { min-width: 0; }
-.crop { overflow: hidden; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
-.crop img { border: 0; border-radius: 0; width: 100%; max-width: none; }
-.crop.top { aspect-ratio: 1.5076; }
-.crop.bottom { aspect-ratio: 1.434; }
-.crop.bottom img { margin-top: -66.33%; }
 .keep, .step { break-inside: avoid; }
 .note { background: var(--accent-soft); border-radius: 6px; padding: 8px 12px; max-width: 65ch; break-inside: avoid; }
 .warn { background: var(--warn-bg); color: var(--warn-fg); border-radius: 6px; padding: 8px 12px; max-width: 65ch; break-inside: avoid; }
@@ -88,6 +84,7 @@ th { background: var(--surface); font-weight: 700; }
 td.num, th.num { text-align: right; }
 ol, ul { padding-left: 1.3em; margin: 4px 0 10px; }
 li { margin-bottom: 3px; }
+ol > li { break-inside: avoid; }
 dl.terms { margin: 6px 0 12px; }
 dl.terms dt { font-weight: 700; margin-top: 6px; }
 dl.terms dd { margin: 0; max-width: 65ch; }
@@ -128,10 +125,6 @@ footer { margin-top: 28px; color: var(--muted); font-size: .88rem; border-top: 1
 <h2>1. What the system represents</h2>
 <p>Each evening the plant operator decides how much cold to store in the thermal-energy-storage (TES) tank overnight. A full tank covers tomorrow's afternoon peak and lets the absorption chillers carry the rest, so the electric chillers stay off in the daytime. A tank filled too full wastes energy. A tank filled too low forces electric chillers to run at peak hours.</p>
 <p>The advisor forecasts how much cold tomorrow needs, adds a safety margin and proposes a charge target. The operator approves it or types their own number. The advisor is a <strong>PROPOSED</strong> workflow: it suggests, the operator decides.</p>
-<figure style="max-width:80%">
-  <img src="img/g_overview.png" alt="The full dashboard at the top of the page: test controls on the left, the plant view in the middle, tonight's recommendation on the right">
-  <figcaption>The dashboard. Left: test controls. Middle: plant view with a time scrubber. Right: tonight's recommendation.</figcaption>
-</figure>
 <h3>What is real and what is not</h3>
 <p>The campus is a synthetic one of about 1,254 room-equivalents (reference 60 m&sup2; rooms) plus a 350 RT base load, driven by real 2024 Seri Iskandar weather. There is no UTP plant data and no real building data. Four labels appear throughout the app.</p>
 <div class="tablewrap">
@@ -154,18 +147,16 @@ footer { margin-top: 28px; color: var(--muted); font-size: .88rem; border-top: 1
 <pre>python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
-playwright install chromium</pre>
-  The last line is only needed for the browser tests and screenshots.</li>
+playwright install chromium   # optional</pre></li>
   <li>Start the app:
 <pre>python -m uvicorn app.main:app</pre></li>
-  <li>Open <code>http://127.0.0.1:8000</code> in a browser. Startup takes about 12 seconds. The first run also builds a cached load file in <code>data/</code>.</li>
+  <li>Open <code>http://127.0.0.1:8000</code> in a browser. A cold start takes about 15 to 20 seconds, because the app trains the forecasters first. The first run also builds a cached load file in <code>data/</code>.</li>
 </ol>
-<p>The 3D plant view needs WebGL. If the browser has none, the 3D button is disabled with a note and the 2D view keeps working.</p>
 </section>
 
 <section>
 <h2>3. Walkthrough of the dashboard</h2>
-<p>Work through the panels in this order. Every number on screen comes from the app's API and carries the SIMULATED label.</p>
+<p>Every number on screen comes from the app's API and carries the SIMULATED label.</p>
 
 <h3>Step 1. Test new values</h3>
 <div class="split narrow">
@@ -204,23 +195,21 @@ playwright install chromium</pre>
 </div>
 
 <h3>Step 3. Plant view, 3D</h3>
-<p>Press <strong>3D</strong> in the card header. The scene uses the same hour as the scrubber, Play and the charts. Drag to orbit, scroll to zoom and press <strong>Reset view</strong> to return. Hover a part to see its name and live value. The campus is drawn as three blocks (Academic, Library and evening, Data centre and labs), each labelled with its load. Blue pipes carry chilled supply and orange pipes carry return. Moving dots show flow, and only where flow is above zero. This block split is an ASSUMPTION.</p>
-<div class="pair">
-  <figure>
-    <img src="img/3d_night.png" alt="3D plant view at 02:00 while the tank charges">
-    <figcaption>02:00: electric chillers charge the tank.</figcaption>
-  </figure>
-  <figure>
-    <img src="img/3d_day.png" alt="3D plant view at 13:00 while the tank discharges to the campus">
-    <figcaption>13:00: the tank discharges to the campus.</figcaption>
-  </figure>
-</div>
+<p>Press <strong>3D</strong> in the card header. It needs WebGL; without it the button is disabled and 2D keeps working. The scene uses the same hour as the scrubber, Play and the charts. Drag to orbit, scroll to zoom and press <strong>Reset view</strong> to return. Hover a part to see its name and live value. The campus is drawn as three blocks (Academic, Library and evening, Data centre and labs), each labelled with its load. Blue pipes carry chilled supply and orange pipes carry return. Moving dots show flow, and only where flow is above zero. This block split is an ASSUMPTION.</p>
+<figure style="max-width:82%">
+  <img src="img/g_3d_night.png" alt="3D plant view at 02:00 while the tank charges">
+  <figcaption>02:00: electric chillers charge the tank. Hover a part for its live value.</figcaption>
+</figure>
+<figure style="max-width:82%">
+  <img class="cropday" src="img/g_3d_day.png" alt="3D plant view at 13:00 while the tank discharges to the campus">
+  <figcaption>13:00: the tank and absorption chillers supply the campus.</figcaption>
+</figure>
 
-<h3>Step 4. Tonight's recommendation</h3>
+<h3>Step 4. Tonight's recommendation, Approve and Adjust</h3>
 <div class="split narrow">
   <figure>
-    <img src="img/g_reco.png" alt="The recommendation card: the charge target in a teal box, four result rows, a status note and Approve and Adjust buttons">
-    <figcaption>Recommendation card.</figcaption>
+    <img src="img/g_adjust.png" alt="The recommendation card with the Adjust box open, a typed target of 9,000 RTh and a preview note">
+    <figcaption>Recommendation card with the Adjust box open after a preview.</figcaption>
   </figure>
   <div>
     <p>The teal box is the advice: how much to charge the tank to, and how many electric chillers to run between 22:00 and 08:00. A "capped" chip appears when the target is limited by tank size.</p>
@@ -230,17 +219,7 @@ playwright install chromium</pre>
       <dt>Electric chillers in daytime</dt><dd>Hours the plan still needs them. Zero is the goal.</dd>
       <dt>Cooling shortfall</dt><dd>Cold the plant could not supply. "none" is the goal.</dd>
     </dl>
-    <p>The coloured note under the rows states the outcome in words.</p>
-  </div>
-</div>
-
-<h3>Step 5. Approve or adjust, and the decision log</h3>
-<div class="split narrow">
-  <figure>
-    <img src="img/g_adjust.png" alt="The recommendation card with the Adjust box open, a typed target of 9,000 RTh and a preview note">
-    <figcaption>Adjust box after a preview.</figcaption>
-  </figure>
-  <div>
+    <p>The coloured note under the rows states the outcome in words. Then decide:</p>
     <ul>
       <li><strong>Approve plan</strong> accepts the AI target. One click writes one row to the decision log.</li>
       <li><strong>Adjust manually</strong> opens a box. Type your own charge target (0 up to the tank capacity).</li>
@@ -250,6 +229,7 @@ playwright install chromium</pre>
     <p class="note">Nothing is logged except on Approve or a confirmed Adjust. The server recomputes the plan itself before it writes, so the log never holds numbers typed in the browser.</p>
   </div>
 </div>
+<h3>Step 5. The decision log</h3>
 <p>The log lives in <code>data/decision_log.csv</code>, which git ignores. It holds one row per decision: time, action, the inputs, the AI target, your target, the outcome and the energy for each strategy, all labelled SIMULATED. If the file is missing, the log shows empty. If an old file has different columns, it is renamed to <code>decision_log.&lt;date-time&gt;.old.csv</code> and a fresh file starts.</p>
 <figure>
   <img src="img/decision_log.png" alt="The decision log table after one approved and one adjusted decision">
@@ -272,43 +252,28 @@ playwright install chromium</pre>
   <img src="img/g_table.png" alt="The comparison table: three strategies with charge, electric-chiller energy, difference to always full, daytime hours, shortfall and cold left in the tank">
   <figcaption>"Same day, three ways to decide the charge", SIMULATED.</figcaption>
 </figure>
-<p>The table runs the same day under three strategies: always fill the tank, a weekday/weekend rule, and the AI forecast. The columns give the charge, electric-chiller energy, the saving against always full, daytime chiller hours, shortfall and cold left in the tank at 21:00. The "Assumptions and limits" list under the table repeats what is assumed.</p>
-<p class="warn"><strong>Read single days with care.</strong> Cold left in the tank at 21:00 counts as spent. On the hot weekday example (23 Oct 2024, 33.2 &deg;C) the rule beat the AI that day, 5,412 against 5,936 kWh. A single day can go either way, so judge the advisor over the season.</p>
+<p>The table runs the same day under three strategies: always fill the tank, a weekday/weekend rule and the AI forecast. The "Assumptions and limits" list under it repeats what is assumed.</p>
+<p class="warn"><strong>Read single days with care.</strong> Cold left in the tank at 21:00 counts as spent. On the hot weekday example (23 Oct 2024, 33.2 &deg;C) the rule beat the AI, 5,412 against 5,936 kWh. Judge the advisor over the season.</p>
 
-<h3>Season result</h3>
-<p>The year-long simulation gives these electric-chiller energy totals for October to December (SIMULATED):</p>
-<div class="tablewrap" style="max-width:420px">
-<table>
-  <thead><tr><th>Strategy</th><th class="num">Energy (MWh)</th></tr></thead>
-  <tbody>
-    <tr><td>Always fill the tank</td><td class="num">373.7</td></tr>
-    <tr><td>Weekday/weekend rule</td><td class="num">346.4</td></tr>
-    <tr><td>AI forecast</td><td class="num">338.9</td></tr>
-    <tr><td>Perfect forecast</td><td class="num">336.5</td></tr>
-  </tbody>
-</table>
-</div>
-<p>The AI uses about 9 % less than always fill and about 2 % less than the rule.</p>
+<p><strong>Season result</strong> (SIMULATED, October to December, electric-chiller energy): always fill 373.7 MWh, rule 346.4, AI 338.9, perfect forecast 336.5. The AI uses about 9 % less than always fill and about 2 % less than the rule.</p>
 </section>
 
 <section>
 <h2>5. How the AI decided</h2>
-<p>The "How the AI decided" card sits below the charts and can be collapsed. It explains the random-forest forecast for the chosen source day, before the "AI forecast error" slider is applied.</p>
-<figure style="max-width:80%">
-  <div class="crop top"><img src="img/rf_panel.png" alt="Top half of the How the AI decided card: the table of 12 inputs and the two importance bar charts"></div>
-  <figcaption>The explainer card, top half: inputs (part 1) and importance (part 2). SIMULATED.</figcaption>
+<p>This card sits below the charts and can be collapsed. It explains the random-forest forecast for the source day, before the "AI forecast error" slider is applied. The red mean in part 3 is the AI forecast.</p>
+<figure>
+  <img src="img/g_rf_inputs.png" alt="Part 1 of the explainer: the table of 12 inputs with their values and sources">
 </figure>
-<figure style="max-width:80%">
-  <div class="crop bottom"><img src="img/rf_panel.png" alt="Bottom half of the card: histogram of the 400 tree forecasts, one tree's path and the training paragraph"></div>
-  <figcaption>The explainer card, bottom half: tree votes (part 3), one tree's path (part 4) and training (part 5).</figcaption>
+<figure>
+  <img src="img/g_rf_importance.png" alt="Part 2 of the explainer: bar chart of permutation importance for each input">
 </figure>
-<ol>
-  <li><strong>What the model saw.</strong> A table of the 12 inputs with their values for this day and where each comes from.</li>
-  <li><strong>Which inputs matter.</strong> Two bar charts. Permutation importance shows how much held-out error rises when an input is shuffled. Read it first. Built-in importance favours inputs with many split points. Month always shows 0 in the permutation chart by design. It does not mean month is unimportant.</li>
-  <li><strong>How the trees voted.</strong> A histogram of the 400 trees' forecasts, with the mean marked. The mean is the AI forecast.</li>
-  <li><strong>One tree's path.</strong> The first five questions one tree asked about this day, such as "is the maximum temperature at or below a value?".</li>
-  <li><strong>Training and accuracy.</strong> The forest has 400 trees and at least 3 days per leaf. It trains on January to September and is tested on October to December, which it never sees in training. On that test its mean absolute error is about 405 RTh, against about 967 RTh for the weekday/weekend rule.</li>
-</ol>
+<figure>
+  <img src="img/g_rf_trees.png" alt="Part 3 of the explainer: histogram of the 400 trees' forecasts with the mean marked">
+</figure>
+<figure>
+  <img src="img/g_rf_path.png" alt="Parts 4 and 5 of the explainer: one tree's first five questions and the training paragraph">
+</figure>
+<p><strong>Reading part 2.</strong> Read the permutation chart first: it shows how much held-out error rises when an input is shuffled. Month always shows 0 by design, which does not mean month is unimportant. <strong>4. One tree's path.</strong> The first five questions one tree asked about this day, such as whether the day of the week is at or below a threshold. <strong>5. Training and accuracy.</strong> The forest has 400 trees and at least 3 days per leaf. It trains on January to September and is tested on October to December, which it never sees in training. On that test its mean absolute error is about 405 RTh, against about 967 RTh for the weekday/weekend rule.</p>
 </section>
 
 <section>

@@ -138,10 +138,8 @@ def shoot_guide(browser):
     page.wait_for_selector("#hero-target:not(:empty)")
     page.wait_for_selector("#explain-path li")
     page.wait_for_timeout(500)
-    page.screenshot(path=str(GUIDE_OUT / "g_overview.png"))
     page.locator("section.card:has(#day-type)").screenshot(path=str(GUIDE_OUT / "g_controls.png"))
     page.locator("section.plant-card").screenshot(path=str(GUIDE_OUT / "g_plant2d.png"))
-    page.locator("section.reco").screenshot(path=str(GUIDE_OUT / "g_reco.png"))
     page.locator("section.charts").screenshot(path=str(GUIDE_OUT / "g_charts.png"))
     page.locator("section.card:has(#comparison)").screenshot(path=str(GUIDE_OUT / "g_table.png"))
     page.click("#adjust")
@@ -152,6 +150,65 @@ def shoot_guide(browser):
     page.locator("section.reco").screenshot(path=str(GUIDE_OUT / "g_adjust.png"))
     ctx.close()
     print("guide shots written")
+
+
+def shoot_range(page, first, last, path, pad=8):
+    """Screenshot the page area from the top of `first` to the bottom of `last` (CSS selectors)."""
+    box = page.evaluate(
+        """([a, b]) => {
+            const r1 = document.querySelector(a).getBoundingClientRect();
+            const r2 = document.querySelector(b).getBoundingClientRect();
+            const y = window.scrollY, x = window.scrollX;
+            return {x: Math.min(r1.left, r2.left) + x, y: r1.top + y,
+                    right: Math.max(r1.right, r2.right) + x, bottom: r2.bottom + y};
+        }""",
+        [first, last],
+    )
+    clip = {
+        "x": max(box["x"] - pad, 0),
+        "y": box["y"] - pad,
+        "width": box["right"] - box["x"] + 2 * pad,
+        "height": box["bottom"] - box["y"] + 2 * pad,
+    }
+    page.screenshot(path=str(path), full_page=True, clip=clip)
+
+
+def shoot_guide_narrow(browser):
+    """Guide crops captured at a narrow viewport so the text stays readable at A4 column width."""
+    ctx = browser.new_context(viewport={"width": 760, "height": 900}, device_scale_factor=2)
+    page = ctx.new_page()
+    page.goto(BASE)
+    page.wait_for_selector("#hero-target:not(:empty)")
+    page.wait_for_selector("#explain-path li")
+    page.wait_for_timeout(500)
+    page.add_style_tag(content="#explain-features th, #explain-features td { padding: 3px 8px; }")
+    h3 = "#explain-body > h3"
+    parts = [
+        ("g_rf_inputs", f"{h3}:nth-of-type(1)", "div.tablewrap:has(#explain-features)"),
+        ("g_rf_importance", f"{h3}:nth-of-type(2)", ".explain-two figure:nth-child(1)"),
+        ("g_rf_trees", f"{h3}:nth-of-type(3)", "#explain-hist-note"),
+        ("g_rf_path", f"{h3}:nth-of-type(4)", "#explain-training"),
+    ]
+    for name, first, last in parts:
+        shoot_range(page, first, last, GUIDE_OUT / f"{name}.png")
+    ctx.close()
+
+    for name, hour, camera in [
+        ("g_3d_night", NIGHT_HOUR, NIGHT_CAMERA),
+        ("g_3d_day", DAY_HOUR, DAY_CAMERA),
+    ]:
+        ctx = browser.new_context(viewport={"width": 760, "height": 900}, device_scale_factor=2)
+        page = ctx.new_page()
+        page.goto(BASE)
+        page.wait_for_selector("#hero-target:not(:empty)")
+        page.click("#view-3d")
+        page.wait_for_function("window.__plant3d && window.__plant3d.ready")
+        page.evaluate("i => window.SCA.setHour(i)", hour)
+        page.evaluate("p => window.__plant3d.setCamera(p)", camera)
+        page.wait_for_timeout(800)
+        page.locator("#plant-3d").screenshot(path=str(GUIDE_OUT / f"{name}.png"))
+        ctx.close()
+    print("narrow guide shots written")
 
 
 def main():
@@ -172,6 +229,7 @@ def main():
             browser = pw.chromium.launch(args=LAUNCH_ARGS)
             if "guide" in sys.argv[1:]:
                 shoot_guide(browser)
+                shoot_guide_narrow(browser)
                 browser.close()
                 return
             for name, day_type, temp in SCENARIOS:

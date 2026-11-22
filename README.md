@@ -23,7 +23,7 @@ playwright install chromium     # only needed for the browser tests and screensh
 python -m uvicorn app.main:app
 ```
 
-Open http://127.0.0.1:8000. Startup takes about 12 s (the first run also builds `data/campus_load_2024_<hash>.csv`).
+Open http://127.0.0.1:8000. A cold start takes about 15 to 20 s, including training the forecasters (the first run also builds `data/campus_load_2024_<hash>.csv`).
 
 ## Test
 
