@@ -37,11 +37,13 @@ const SEGMENTS = {
   // SAC return branches (sac_rt) leave the trunk and end on each absorption chiller's west face (x = -16.5)
   return_sac: [ORANGE, [[-19, 0.5, -6], [-16.5, 0.5, -6]]],
   return_sac2: [ORANGE, [[-19, 0.5, -9.6], [-16.5, 0.5, -9.6]]],
-  // EC leg (ec_out_rt): east along z = 10.5, branches to EC0-2 and ends on the EC3 south face (z = 9.3)
-  return_ec: [ORANGE, [[-19, 0.5, 10.5], [-5, 0.5, 10.5], [-5, 0.5, 9.3]]],
+  // EC return manifold (ec_out_rt): east along z = 10.5, ends at the EC3 branch point (-5.2); each EC has its own
+  // south-face branch, so an idle EC's branch stays dim
+  return_ec: [ORANGE, [[-19, 0.5, 10.5], [-5.2, 0.5, 10.5]]],
   ret_ec0: [ORANGE, [[-16, 0.5, 10.5], [-16, 0.5, 9.3]]],
   ret_ec1: [ORANGE, [[-12.4, 0.5, 10.5], [-12.4, 0.5, 9.3]]],
   ret_ec2: [ORANGE, [[-8.8, 0.5, 10.5], [-8.8, 0.5, 9.3]]],
+  ret_ec3: [ORANGE, [[-5.2, 0.5, 10.5], [-5.2, 0.5, 9.3]]],
 };
 const ECS_X = [0, 1, 2, 3].map((i) => -16 + i * 3.6);
 export const STUB_POINTS = {}; // no static pipes remain; every pipe is a flow segment

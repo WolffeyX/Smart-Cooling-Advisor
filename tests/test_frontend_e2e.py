@@ -586,6 +586,7 @@ def test_3d_block_stubs_follow_block_load(page, server):
     assert hourly[15]["ec_count"] == 0
     assert f["return_ec"] == 0
     assert f["return_ec"] == hourly[15]["ec_out_rt"]
+    assert all(f[f"ret_ec{i}"] == 0 for i in range(4))
     assert f["ret_academic"] == hourly[15]["academic_rt"] > 0
     assert f["ret_evening"] == hourly[15]["evening_rt"]
     assert f["ret_base"] == hourly[15]["base_rt"]
@@ -596,6 +597,11 @@ def test_3d_block_stubs_follow_block_load(page, server):
     assert f4["to_academic"] == 0
     assert f4["ret_academic"] == 0
     assert f4["return_ec"] == hourly[4]["ec_out_rt"] > 0
+    n_on = hourly[4]["ec_count"]
+    assert 0 < n_on < 4
+    for i in range(4):
+        want = hourly[4]["ec_out_rt"] if i < n_on else 0
+        assert f4[f"ret_ec{i}"] == want, f"ret_ec{i}"
     assert errors == []
 
 
