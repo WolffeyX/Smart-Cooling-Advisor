@@ -97,7 +97,7 @@
     switch (t.id) {
       case "sac": return `Absorption chillers: ${fmt(row.sac_rt)} RT`;
       case "ec":
-        return `Electric chiller ${t.index + 1}: ${t.index < row.ec_count ? "on" : "off"} (${row.ec_count} of ${p.n_ec} on, ${fmt(row.ec_load_rt + row.charge_rt)} RT)`;
+        return `Electric chiller ${t.index + 1}: ${t.index < row.ec_count ? "on" : "off"} (${row.ec_count} of ${p.n_ec} on · charging tank ${fmt(row.charge_rt)} RT · to campus ${fmt(row.ec_load_rt)} RT)`;
       case "tank": return `Cold-storage tank: ${fmt(row.tank_level_rth)} of ${fmt(p.tank_capacity_rth)} RTh`;
       case "academic": case "evening": case "base":
         return `${NAMES[t.id]}: ${fmt(row[`${t.id}_rt`])} RT`;

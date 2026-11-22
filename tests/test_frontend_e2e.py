@@ -536,6 +536,13 @@ def test_3d_tooltip_on_hover(page, server):
     found = page.evaluate("window.__plant3d.hoverProbe && window.__plant3d.hoverProbe('tank')")
     assert found
     assert "RTh" in page.inner_text("#plant-tooltip")
+    page.evaluate("window.SCA.setHour(4)")
+    row = _hourly(page)[4]
+    assert row["charge_rt"] > 0
+    assert page.evaluate("window.__plant3d.hoverProbe('ec')")
+    ec = page.inner_text("#plant-tooltip")
+    assert f"charging tank {round(row['charge_rt']):,} RT" in ec
+    assert f"to campus {round(row['ec_load_rt']):,} RT" in ec
     assert errors == []
 
 
