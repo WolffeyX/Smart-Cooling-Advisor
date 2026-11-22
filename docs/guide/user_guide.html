@@ -273,7 +273,7 @@ playwright install chromium   # optional</pre></li>
 <figure>
   <img src="img/g_rf_path.png" alt="Parts 4 and 5 of the explainer: one tree's first five questions and the training paragraph">
 </figure>
-<p><strong>Reading part 2.</strong> Read the permutation chart first: it shows how much held-out error rises when an input is shuffled. Month always shows 0 by design, which does not mean month is unimportant. <strong>4. One tree's path.</strong> The first five questions one tree asked about this day, such as whether the day of the week is at or below a threshold. <strong>5. Training and accuracy.</strong> The forest has 400 trees and at least 3 days per leaf. It trains on January to September and is tested on October to December, which it never sees in training. On that test its mean absolute error is about 405 RTh, against about 967 RTh for the weekday/weekend rule.</p>
+<p><strong>Reading part 2.</strong> The chart shows permutation importance: how much held-out error rises when an input is shuffled. Month always shows 0 by design: each model is tested only on months it never trained on, and shuffling month among those test days does not move any day across a month split. It does not mean month is unimportant. <strong>4. One tree's path.</strong> The first five questions one tree asked about this day, such as whether the day of the week is at or below a threshold. <strong>5. Training and accuracy.</strong> The forest has 400 trees and at least 3 days per leaf. It trains on January to September and is tested on October to December, which it never sees in training. On that test its mean absolute error is about 405 RTh, against about 967 RTh for the weekday/weekend rule.</p>
 </section>
 
 <section>
