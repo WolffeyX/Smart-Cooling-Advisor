@@ -12,3 +12,13 @@ def P():
 @pytest.fixture(scope="session")
 def bank(P):
     return build_day_bank(P)
+
+
+@pytest.fixture(scope="session")
+def client():
+    from fastapi.testclient import TestClient
+
+    from app import main
+
+    with TestClient(main.app) as c:
+        yield c
