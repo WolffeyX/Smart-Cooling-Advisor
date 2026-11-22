@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+import os
 from pathlib import Path
 
 import pandas as pd
@@ -37,6 +38,7 @@ def train_classifier(weather: pd.DataFrame) -> dict:
     }
 
 
+LOAD_COLUMNS = ["time", "total_rt", "base_rt", "room_rt"]
 LOAD_KEYS = ("base_load_rt", "target_peak_rt", "evening_factor", "noise_daily", "noise_hourly")
 
 
@@ -51,7 +53,12 @@ def campus_load_frame(weather: pd.DataFrame, params: dict,
     """Hourly campus load (time, total_rt, base_rt, room_rt), cached as CSV by load hash."""
     path = Path(cache_dir) / f"campus_load_2024_{load_hash(params)}.csv"
     if path.exists():
-        return pd.read_csv(path, parse_dates=["time"])
+        try:
+            cached = pd.read_csv(path, parse_dates=["time"])
+            if list(cached.columns) == LOAD_COLUMNS and len(cached) == len(weather):
+                return cached
+        except (OSError, ValueError, pd.errors.ParserError, pd.errors.EmptyDataError):
+            pass  # corrupt or partial cache: fall through and rebuild
     total, _ = step5_plant.campus_load(weather, params)
     base = params["base_load_rt"] * (1 + 0.03 * (weather["temp"].to_numpy() - 27))
     frame = pd.DataFrame({
@@ -61,5 +68,10 @@ def campus_load_frame(weather: pd.DataFrame, params: dict,
         "room_rt": total - base,
     })
     path.parent.mkdir(parents=True, exist_ok=True)
-    frame.to_csv(path, index=False)
+    tmp = path.with_name(f"{path.name}.{os.getpid()}.tmp")
+    try:
+        frame.to_csv(tmp, index=False)
+        os.replace(tmp, path)  # atomic: readers never see a half-written file
+    finally:
+        tmp.unlink(missing_ok=True)
     return frame

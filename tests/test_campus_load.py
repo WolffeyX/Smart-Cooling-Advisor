@@ -1,4 +1,7 @@
+import os
+
 import numpy as np
+import pandas as pd
 
 from app import config, model
 from app.legacy import step5_plant
@@ -17,7 +20,7 @@ def test_load_matches_step5_and_writes_cache(tmp_path):
 def test_cache_is_reused(tmp_path, monkeypatch):
     w = model.load_weather()
     p = config.get_params("default")
-    model.campus_load_frame(w, p, cache_dir=tmp_path)
+    first = model.campus_load_frame(w, p, cache_dir=tmp_path)
 
     def boom(*a, **k):
         raise AssertionError("rebuilt")
@@ -25,6 +28,20 @@ def test_cache_is_reused(tmp_path, monkeypatch):
     monkeypatch.setattr(model.step5_plant, "campus_load", boom)
     fr = model.campus_load_frame(w, p, cache_dir=tmp_path)
     assert len(fr) == 8784
+    pd.testing.assert_frame_equal(fr, first)
+
+
+def test_truncated_cache_is_rebuilt(tmp_path):
+    w = model.load_weather()
+    p = config.get_params("default")
+    first = model.campus_load_frame(w, p, cache_dir=tmp_path)
+    path = tmp_path / f"campus_load_2024_{model.load_hash(p)}.csv"
+    lines = path.read_text().splitlines()[:11]
+    path.write_text(os.linesep.join(lines) + os.linesep)
+    fr = model.campus_load_frame(w, p, cache_dir=tmp_path)
+    assert len(fr) == 8784
+    assert len(pd.read_csv(path)) == 8784
+    pd.testing.assert_frame_equal(fr, first)
 
 
 def test_hash_changes_with_load_params_not_plant_params():
