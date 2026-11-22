@@ -30,21 +30,38 @@ def _num(x: float, round_values: bool) -> float:
     return round(float(x), 1) if round_values else float(x)
 
 
-def _message(status: str, cap: float, shortfall: float) -> str:
-    if status == "capped":
-        return (
-            f"Target capped at tank capacity ({cap:,.0f} RTh); "
-            "daytime electric chillers are expected."
-        )
+def _message(
+    status: str,
+    cap: float,
+    shortfall: float,
+    capped: bool,
+    daytime_ec_hours: int,
+    target: float,
+    reached: float,
+) -> str:
+    n = daytime_ec_hours
+    hours = f"{n} daytime hour{'s' if n != 1 else ''}"
     if status == "shortfall":
-        return (
-            f"Cooling shortfall of {shortfall:,.0f} RTh tomorrow. "
-            "Raise the safety margin or plan daytime electric chillers."
+        msg = (
+            f"Cooling shortfall of {shortfall:,.0f} RTh tomorrow even with all electric "
+            "chillers running. "
+        ) + ("The tank is already at capacity." if capped else "Raise the safety margin.")
+    elif status == "capped":
+        msg = f"Target capped at tank capacity ({cap:,.0f} RTh)" + (
+            f"; electric chillers run {hours} tomorrow."
+            if n > 0
+            else "; the tank still covers tomorrow."
         )
-    return "Plan covers tomorrow with the chosen safety margin."
+    elif n > 0:
+        msg = f"No cooling shortfall, but the tank runs out and electric chillers run {hours} tomorrow."
+    else:
+        msg = "Plan covers tomorrow with the chosen safety margin."
+    if target - reached > 1:
+        msg += f" Chillers can only charge the tank to {reached:,.0f} RTh by 08:00."
+    return msg
 
 
-def _assumptions(sc, preset: str) -> list[str]:
+def _assumptions(sc, preset: str, levels: dict) -> list[str]:
     label = PRESET_LABELS.get(preset, "ASSUMPTION")
     months = ", ".join(str(m) for m in sc.training_months)
     return [
@@ -72,6 +89,14 @@ def _assumptions(sc, preset: str) -> list[str]:
             f"The scenario replays a real 2024 day: {sc.source_date} (max {sc.source_tmax_c} °C); "
             f"AI forecast {sc.forecast_kind}, trained on months {months}. Jan–Sep forecasts are "
             "leave-one-month-out: out-of-sample by month, not a true forward forecast."
+        ),
+        (
+            "Single-day comparison (SIMULATED): cold still in the tank at 21:00 is counted as "
+            "spent, so strategies that charge more end the day with more stored (always fill "
+            f"{levels['always_full']:,.0f} RTh, rule {levels['calendar_rule']:,.0f} RTh, "
+            f"AI {levels['ai_forecast']:,.0f} RTh) and the % overstates the AI's saving. "
+            "Over Oct–Dec the year-long simulation gives the AI about −9 % vs always fill "
+            "and about −2 % vs the weekday/weekend rule."
         ),
         ("ASSUMPTION: one year of weather only (2024); no measured UTP/PMMD plant data."),
     ]
@@ -115,6 +140,7 @@ def build_response(bank: DayBank, req: dict, base_params: dict, round_values: bo
                 else vs_always_full_pct(s["ec_energy_kwh"], e_full),
                 "daytime_ec_hours": s["daytime_ec_hours"],
                 "shortfall_rth": n(s["shortfall_rth"]),
+                "tank_level_21_rth": n(runs[name]["tank_level_rth"][-1]),
             }
         )
 
@@ -150,7 +176,15 @@ def build_response(bank: DayBank, req: dict, base_params: dict, round_values: bo
             "daytime_ec_hours": ai_sum["daytime_ec_hours"],
             "shortfall_rth": n(shortfall),
             "status": status,
-            "message": _message(status, cap, shortfall),
+            "message": _message(
+                status,
+                cap,
+                shortfall,
+                capped,
+                ai_sum["daytime_ec_hours"],
+                ai_target,
+                float(ai_run["tank_level_rth"][9]),
+            ),
         },
         "hourly": hourly,
         "comparison": comparison,
@@ -161,5 +195,7 @@ def build_response(bank: DayBank, req: dict, base_params: dict, round_values: bo
             "tes_max_discharge_rt": n(p["tes_max_discharge_rt"]),
             "charge_window": "22:00-08:00",
         },
-        "assumptions": _assumptions(sc, preset),
+        "assumptions": _assumptions(
+            sc, preset, {k: float(r["tank_level_rth"][-1]) for k, r in runs.items()}
+        ),
     }
