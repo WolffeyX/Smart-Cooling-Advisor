@@ -14,11 +14,17 @@ class RecommendRequest(BaseModel):
     tank_capacity_rth: float = Field(default=10000, ge=5000, le=25000)
     tank_level_22_rth: float = Field(default=1500, ge=0)
     forecast_error_pct: float = Field(default=0, ge=-30, le=30)
+    charge_target_override_rth: float | None = Field(default=None, ge=0)
 
     @model_validator(mode="after")
     def _level_within_capacity(self):
         if self.tank_level_22_rth > self.tank_capacity_rth:
             raise ValueError("tank_level_22_rth must be ≤ tank_capacity_rth")
+        if (
+            self.charge_target_override_rth is not None
+            and self.charge_target_override_rth > self.tank_capacity_rth
+        ):
+            raise ValueError("charge_target_override_rth must be ≤ tank_capacity_rth")
         return self
 
 
@@ -86,6 +92,18 @@ class Plant(BaseModel):
     tank_capacity_rth: float
 
 
+class OperatorPlan(BaseModel):
+    charge_target_rth: float
+    ec_energy_kwh: float
+    vs_always_full_pct: float | None
+    daytime_ec_hours: int
+    shortfall_rth: float
+    tank_level_21_rth: float
+    status: Literal["ok", "shortfall"]
+    over_charged: bool
+    message: str
+
+
 class RecommendResponse(BaseModel):
     label: Literal["SIMULATED"]
     scenario: Scenario
@@ -94,6 +112,7 @@ class RecommendResponse(BaseModel):
     comparison: list[ComparisonRow]
     plant: Plant
     assumptions: list[str]
+    operator_plan: OperatorPlan | None = None
 
 
 class HealthResponse(BaseModel):

@@ -173,6 +173,41 @@ def build_response(bank: DayBank, req: dict, base_params: dict, round_values: bo
     left_21 = float(ai_run["tank_level_rth"][-1])
     over_charged = status != "shortfall" and _over_charged(left_21, reached)
 
+    operator_plan = None
+    hourly_run = ai_run
+    override = req.get("charge_target_override_rth")
+    if override is not None:
+        op_target = min(cap, float(override))
+        hourly_run = dispatch_day(sc.load_rt, sc.t_out, HOURS, level0, op_target, p)
+        op_sum = summarise_day(hourly_run)
+        op_short = op_sum["shortfall_rth"]
+        op_status = "shortfall" if op_short > 1e-6 else "ok"
+        op_reached = float(hourly_run["tank_level_rth"][9])
+        op_left_21 = float(hourly_run["tank_level_rth"][-1])
+        operator_plan = {
+            "charge_target_rth": n(op_target),
+            "ec_energy_kwh": n(op_sum["ec_energy_kwh"]),
+            "vs_always_full_pct": vs_always_full_pct(op_sum["ec_energy_kwh"], e_full),
+            "daytime_ec_hours": op_sum["daytime_ec_hours"],
+            "shortfall_rth": n(op_short),
+            "tank_level_21_rth": n(op_left_21),
+            "status": op_status,
+            "over_charged": bool(
+                op_status != "shortfall" and _over_charged(op_left_21, op_reached)
+            ),
+            "message": _message(
+                op_status,
+                cap,
+                op_short,
+                False,
+                op_sum["daytime_ec_hours"],
+                op_target,
+                op_reached,
+                sc.actual_need_rth,
+                op_left_21,
+            ),
+        }
+
     hourly = []
     for i, label in enumerate(HOUR_LABELS):
         row = {"hour": label}
@@ -180,7 +215,7 @@ def build_response(bank: DayBank, req: dict, base_params: dict, round_values: bo
             if k in _SCENARIO_HOURLY:
                 row[k] = n(getattr(sc, k)[i])
             else:
-                row[k] = int(ai_run[k][i]) if k in _HOURLY_INT else n(ai_run[k][i])
+                row[k] = int(hourly_run[k][i]) if k in _HOURLY_INT else n(hourly_run[k][i])
         hourly.append(row)
 
     preset = os.environ.get("SCA_PARAMS_PRESET", "default")
@@ -230,4 +265,5 @@ def build_response(bank: DayBank, req: dict, base_params: dict, round_values: bo
         "assumptions": _assumptions(
             sc, preset, {k: float(r["tank_level_rth"][-1]) for k, r in runs.items()}
         ),
+        "operator_plan": operator_plan,
     }
