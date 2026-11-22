@@ -328,7 +328,7 @@
   function drawTank() {
     const svg = $("chart-tank");
     svg.textContent = "";
-    const W = 640, H = 240, m = { l: 48, r: 8, t: 20, b: 26 };
+    const W = 440, H = 240, m = { l: 48, r: 8, t: 20, b: 26 };
     const rows = data.hourly;
     const cap = reqBody.tank_capacity_rth;
     const maxV = Math.max(cap, ...rows.map((r) => r.tank_level_rth)) * 1.05;
@@ -341,8 +341,8 @@
         x: m.l + i * bw + 2, y, width: bw - 4, height: H - m.b - y,
         fill: i === idx ? "#1B2430" : COLORS.tank, class: i === idx ? "tbar sel" : "tbar",
       }, svg);
-      el("text", {
-        x: m.l + i * bw + bw / 2, y: H - 8, "text-anchor": "middle", "font-size": 10, fill: "#566273",
+      if (i % 2 === 0) el("text", {
+        x: m.l + i * bw + bw / 2, y: H - 8, "text-anchor": "middle", "font-size": 11, fill: "#566273",
       }, svg, r.hour.slice(0, 2));
     });
     el("line", { x1: m.l, x2: W - m.r, y1: py(cap), y2: py(cap), stroke: "#C0392B", "stroke-dasharray": "5 4" }, svg);
