@@ -8,12 +8,13 @@
   const STRATEGY = {
     always_full: "Always fill the tank",
     calendar_rule: "Weekday/weekend rule",
-    ai_forecast: "AI forecast + margin",
+    ai_forecast: "AI forecast",
   };
   const COLORS = { sac: "#0E6F6A", tank: "#2F80ED", ec: "#D98E04", chg: "#B8C2CC" };
   const NOON = 14; // index of 12:00 in the 22:00-first hour order
 
   let data = null;
+  let reqBody = null; // request body that produced `data`
   let dayType = "weekday";
   let seq = 0;
   let applied = 0;
@@ -62,18 +63,20 @@
 
   async function fetchRecommendation() {
     const mySeq = ++seq;
+    const body = readInputs();
     document.body.classList.add("loading");
     try {
       const res = await fetch("/recommend", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(readInputs()),
+        body: JSON.stringify(body),
       });
       if (!res.ok) throw new Error(`The advisor returned an error (HTTP ${res.status}).`);
       const json = await res.json();
       if (mySeq < applied || mySeq < seq) return; // a newer request exists: drop this one
       applied = mySeq;
       data = json;
+      reqBody = body;
       $("api-error").hidden = true;
       render();
     } catch (err) {
@@ -99,14 +102,16 @@
     sd.dataset.date = sc.source_date;
 
     $("hero-target").textContent = `${fmt(r.charge_target_rth)} RTh`;
+    $("capped-chip").hidden = !r.capped;
     const ec = r.electric_chillers;
     $("chiller-plan").textContent = ec.count
-      ? `${fmt(ec.count)} electric chillers, ${ec.start}–${ec.end}`
-      : "No electric chillers needed";
+      ? `Run ${fmt(ec.count)} electric chillers from ${ec.start} to ${ec.end}`
+      : "No overnight charging needed";
     $("ai-need").textContent = `${fmt(r.ai_forecast_need_rth)} RTh`;
     $("actual-need").textContent = `${fmt(r.actual_need_rth)} RTh`;
-    $("daytime-ec").textContent = `${fmt(r.daytime_ec_hours)} h`;
-    $("shortfall").textContent = `${fmt(r.shortfall_rth)} RTh`;
+    $("daytime-ec").textContent = r.daytime_ec_hours ? `${fmt(r.daytime_ec_hours)} h` : "none";
+    $("shortfall").textContent = r.shortfall_rth > 0 ? `${fmt(r.shortfall_rth)} RTh` : "none";
+    $("shortfall").classList.toggle("good", !(r.shortfall_rth > 0));
 
     const note = $("status-note");
     note.textContent = "";
@@ -124,9 +129,9 @@
 
     const p = data.plant;
     $("plant-text").textContent =
-      `absorption chillers ${fmt(p.sac_available_rt)} RT, ${fmt(p.n_ec)} electric chillers of ` +
-      `${fmt(p.ec_unit_rt)} RT, tank discharge up to ${fmt(p.tes_max_discharge_rt)} RT, ` +
-      `charging ${p.charge_window}.`;
+      `Fixed plant: 2 × 1,250 RT absorption chillers (≈${fmt(p.sac_available_rt)} RT ` +
+      `available), ${fmt(p.n_ec)} × ${fmt(p.ec_unit_rt)} RT electric chillers, ` +
+      `overnight charging ${p.charge_window.replace("-", "–")}.`;
 
     renderTable();
     const ul = document.querySelector("#assumptions ul");
@@ -148,12 +153,12 @@
       if (c.strategy === "ai_forecast") tr.className = "ai";
       const cells = [
         STRATEGY[c.strategy] || c.strategy,
-        fmt(c.charge_target_rth),
-        fmt(c.ec_energy_kwh),
+        `${fmt(c.charge_target_rth)} RTh`,
+        `${fmt(c.ec_energy_kwh)} kWh`,
         c.vs_always_full_pct === null ? "—" : `${fmt(c.vs_always_full_pct, nf1)} %`,
-        fmt(c.daytime_ec_hours),
-        fmt(c.shortfall_rth),
-        fmt(c.tank_level_21_rth),
+        `${fmt(c.daytime_ec_hours)} h`,
+        c.shortfall_rth > 0 ? `${fmt(c.shortfall_rth)} RTh` : "none",
+        `${fmt(c.tank_level_21_rth)} RTh`,
       ];
       for (const t of cells) {
         const td = document.createElement("td");
@@ -169,12 +174,23 @@
     if (!data) return;
     const h = data.hourly[idx];
     $("scrubber").value = idx;
-    $("clock").textContent = h.hour;
+    const when = `${h.hour} ${idx < 2 ? "tonight" : "tomorrow"}`;
+    $("clock").textContent = when;
+    $("t-plant").textContent = `3D plant view · ${when}`;
+    const night = idx < 10; // 22:00-07:00
+    let cap;
+    if (h.charge_rt > 0) cap = "Night: charging the tank";
+    else if (!night && h.ec_load_rt > 0) cap = "Electric chillers covering the gap";
+    else if (h.tank_out_rt > 0) cap = "Day: tank is covering the peak";
+    else cap = night ? "Night: absorption chillers only" : "Day: absorption chillers only";
+    $("plant-caption").textContent = cap;
     $("tile-load").textContent = `${fmt(h.campus_load_rt)} RT`;
     $("tile-sac").textContent = `${fmt(h.sac_rt)} RT`;
     $("tile-tank").textContent =
-      h.charge_rt > 0 ? `+${fmt(h.charge_rt)} RT in` : `${fmt(h.tank_out_rt)} RT out`;
-    $("tile-ec").textContent = `${fmt(h.ec_count)} on · ${fmt(h.ec_kw)} kW`;
+      h.charge_rt > 0
+        ? `+${fmt(h.charge_rt * 0.95)} RT`
+        : h.tank_out_rt > 0 ? `−${fmt(h.tank_out_rt)} RT` : "idle";
+    $("tile-ec").textContent = h.ec_count ? `${fmt(h.ec_count)} on` : "all off";
     drawPlant(h);
     drawSupply();
     drawTank();
@@ -196,7 +212,7 @@
   function drawPlant(h) {
     const svg = $("plant-svg");
     svg.textContent = "";
-    const cap = Number(readInputs().tank_capacity_rth);
+    const cap = reqBody.tank_capacity_rth;
     const fill = Math.max(0, Math.min(1, h.tank_level_rth / cap));
     const flow = (x1, y1, x2, y2, on, color) => {
       const l = el("path", {
@@ -275,7 +291,7 @@
     svg.textContent = "";
     const W = 640, H = 240, m = { l: 48, r: 8, t: 20, b: 26 };
     const rows = data.hourly;
-    const tot = rows.map((r) => r.sac_rt + r.tank_out_rt + r.ec_load_rt + r.charge_rt);
+    const tot = rows.map((r) => r.sac_rt + r.tank_out_rt + r.ec_load_rt + r.charge_rt + r.unmet_rt);
     const maxV = Math.max(1, ...tot) * 1.05;
     axisGrid(svg, W, H, m, maxV, "RT");
     const bw = (W - m.l - m.r) / rows.length;
@@ -298,11 +314,13 @@
           stroke: "#1B2430", "stroke-width": 2,
         }, g);
       }
-      if (i % 3 === 0) {
-        el("text", {
-          x: m.l + i * bw + bw / 2, y: H - 8, "text-anchor": "middle", "font-size": 11, fill: "#566273",
-        }, svg, r.hour);
+      if (r.unmet_rt > 0) {
+        const uh = Math.max(3, sy(r.unmet_rt));
+        el("rect", { x: m.l + i * bw + 2, y: y - uh, width: bw - 4, height: uh, fill: "#C0392B" }, g);
       }
+      el("text", {
+        x: m.l + i * bw + bw / 2, y: H - 8, "text-anchor": "middle", "font-size": 10, fill: "#566273",
+      }, svg, r.hour.slice(0, 2));
       g.addEventListener("click", () => { idx = i; stopPlay(); renderTime(); });
     });
   }
@@ -312,23 +330,23 @@
     svg.textContent = "";
     const W = 640, H = 240, m = { l: 48, r: 8, t: 20, b: 26 };
     const rows = data.hourly;
-    const cap = Number(readInputs().tank_capacity_rth);
+    const cap = reqBody.tank_capacity_rth;
     const maxV = Math.max(cap, ...rows.map((r) => r.tank_level_rth)) * 1.05;
     axisGrid(svg, W, H, m, maxV, "RTh");
-    const step = (W - m.l - m.r) / rows.length;
-    const px = (i) => m.l + step * (i + 0.5);
+    const bw = (W - m.l - m.r) / rows.length;
     const py = (v) => H - m.b - ((H - m.t - m.b) * v) / maxV;
+    rows.forEach((r, i) => {
+      const y = py(r.tank_level_rth);
+      el("rect", {
+        x: m.l + i * bw + 2, y, width: bw - 4, height: H - m.b - y,
+        fill: i === idx ? "#1B2430" : COLORS.tank, class: i === idx ? "tbar sel" : "tbar",
+      }, svg);
+      el("text", {
+        x: m.l + i * bw + bw / 2, y: H - 8, "text-anchor": "middle", "font-size": 10, fill: "#566273",
+      }, svg, r.hour.slice(0, 2));
+    });
     el("line", { x1: m.l, x2: W - m.r, y1: py(cap), y2: py(cap), stroke: "#C0392B", "stroke-dasharray": "5 4" }, svg);
     el("text", { x: W - m.r, y: py(cap) - 4, "text-anchor": "end", "font-size": 11, fill: "#C0392B" }, svg, "capacity");
-    const pts = rows.map((r, i) => `${px(i)},${py(r.tank_level_rth)}`).join(" ");
-    el("polygon", { points: `${px(0)},${py(0)} ${pts} ${px(rows.length - 1)},${py(0)}`, fill: COLORS.tank, opacity: 0.18 }, svg);
-    el("polyline", { points: pts, fill: "none", stroke: COLORS.tank, "stroke-width": 2.5 }, svg);
-    el("circle", { cx: px(idx), cy: py(rows[idx].tank_level_rth), r: 5, fill: "#1B2430" }, svg);
-    rows.forEach((r, i) => {
-      if (i % 3 === 0) {
-        el("text", { x: px(i), y: H - 8, "text-anchor": "middle", "font-size": 11, fill: "#566273" }, svg, r.hour);
-      }
-    });
   }
 
   // ---------- playback ----------

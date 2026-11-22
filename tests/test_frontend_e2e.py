@@ -96,8 +96,11 @@ def test_day_type_change_refetches(page, server):
 def test_capacity_drop_clamps_level(page, server):
     page.goto(server)
     page.fill("#level", "9000")
-    page.fill("#capacity", "6000")
-    page.wait_for_timeout(500)
+    with page.expect_request(
+        lambda r: r.url.endswith("/recommend") and '"tank_capacity_rth":6000' in (r.post_data or "")
+    ) as req:
+        page.fill("#capacity", "6000")
+    assert req.value.post_data_json["tank_level_22_rth"] <= 6000
     assert float(page.input_value("#level")) <= 6000
 
 
@@ -125,11 +128,12 @@ def test_stale_responses_ignored(page, server):
     page.click('#day-type [data-value="weekend"]')
     page.wait_for_timeout(400)
     page.click('#day-type [data-value="weekday"]')
-    page.wait_for_timeout(2800)
     weekday = {**BASE_BODY, "day_type": "weekday"}
     expected = page.request.post(f"{server}/recommend", data=weekday).json()["scenario"][
         "source_date"
     ]
+    page.wait_for_selector(f'#scenario-date[data-date="{expected}"]')
+    page.wait_for_timeout(2000)  # let the delayed weekend response arrive; it must be ignored
     assert page.get_attribute("#scenario-date", "data-date") == expected
 
 
@@ -147,3 +151,16 @@ def test_approve_shows_toast(page, server):
     _ready(page, server)
     page.click("text=Approve plan")
     assert "Demo only, nothing is sent" in page.inner_text("#toast")
+
+
+def test_sketch_wording(page, server):
+    _ready(page, server)
+    assert "Run " in page.inner_text("#chiller-plan")
+    assert " electric chillers from " in page.inner_text("#chiller-plan")
+    assert page.inner_text("#clock").endswith("tomorrow")
+    assert page.inner_text("#t-plant").startswith("3D plant view · 12:00 tomorrow")
+    assert page.inner_text("#comparison tbody tr:last-child td:first-child") == "AI forecast"
+    assert "The advisor only suggests the charge amount." in page.inner_text("body")
+    assert "Tomorrow is a" in page.inner_text("body")
+    page.click("#reset")
+    assert page.inner_text("#clock").endswith("tomorrow")
