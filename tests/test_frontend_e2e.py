@@ -741,3 +741,27 @@ def test_impact_card_negative_says_more(page, server):
     assert "kg CO₂ more" in rule
     assert "−" not in rule
     assert "NaN" not in page.inner_text("#impact")
+
+
+def test_impact_note_from_api(page, server):
+    _ready(page, server)
+    api = page.request.post(f"{server}/recommend", data=BASE_BODY).json()
+    page.wait_for_function("document.getElementById('impact-caveat').textContent.length > 0")
+    assert page.inner_text("#impact-caveat") == api["impact"]["note"]
+    assert "overstates" not in page.inner_text("#impact-caveat")
+
+
+def test_impact_equal_energy_wording(page, server):
+    def zero_rule(route):
+        r = route.fetch()
+        j = r.json()
+        j["impact"]["vs_calendar_rule"].update(kwh_saved=0.0, pct_saved=0.0, co2_kg_saved=0.0)
+        route.fulfill(response=r, json=j)
+
+    page.route("**/recommend", zero_rule)
+    page.goto(server)
+    page.wait_for_selector("#impact-rule:not(:empty)")
+    rule = page.inner_text("#impact-rule").replace(" ", " ")
+    assert rule.startswith("vs weekday/weekend rule: same electric-chiller energy")
+    assert "energy as" not in rule
+    assert "NaN" not in page.inner_text("#impact")

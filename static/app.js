@@ -166,7 +166,7 @@
     const prefix = `vs ${baseline}`;
     const kwh = Math.round(Math.abs(line.kwh_saved));
     const pct = line.pct_saved === null ? "" : ` (${fmt(Math.abs(line.pct_saved), nf1)} %)`;
-    if (kwh === 0) return `${prefix}: same electric-chiller energy as ${baseline}${pct}`;
+    if (kwh === 0) return `${prefix}: same electric-chiller energy${pct}`;
     const dir = line.kwh_saved >= 0 ? "less" : "more";
     return (
       `${prefix}: ${fmt(kwh)} kWh ${dir} electric-chiller energy${pct}` +
@@ -181,9 +181,7 @@
     $("impact-factor").textContent =
       `Grid factor ${im.grid_kg_per_kwh.toFixed(3)} kg CO₂/kWh, ${im.grid_source} · ` +
       "electricity only · ASSUMPTION";
-    $("impact-caveat").textContent =
-      "One day overstates the saving: cold left in the tank at 21:00 counts as spent. " +
-      "Over Oct–Dec the AI saves about 9 % against always filling (SIMULATED).";
+    $("impact-caveat").textContent = im.note;
   }
 
   function renderOperator() {
