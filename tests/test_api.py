@@ -94,3 +94,10 @@ def test_cold_start_under_60s(tmp_path):
     t = time.perf_counter()
     scenario.build_day_bank(config.get_params(), cache_dir=tmp_path)
     assert time.perf_counter() - t < 60
+
+
+def test_three_vendored(client):
+    r = client.get("/vendor/three/three.module.js")
+    assert r.status_code == 200
+    assert "javascript" in r.headers["content-type"]
+    assert "REVISION = '170'" in r.text
