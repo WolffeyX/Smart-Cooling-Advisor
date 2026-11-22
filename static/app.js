@@ -58,6 +58,7 @@
 
   function clearOverride() {
     override = null;
+    seq++; // drop any in-flight response that was requested with the old override
     $("adjust-box").hidden = true;
     $("adjust").setAttribute("aria-expanded", "false");
     $("operator-note").hidden = true;
@@ -162,7 +163,10 @@
     const op = data.operator_plan;
     const note = $("operator-note");
     note.hidden = !op;
-    $("override-confirm").disabled = !op;
+    $("override-confirm").disabled = !(
+      override !== null && op && op.charge_target_rth === override &&
+      Number($("override-input").value) === override
+    );
     if (op) {
       note.textContent =
         `Operator plan: ${fmt(op.charge_target_rth)} RTh · ` +

@@ -252,3 +252,56 @@ def test_slider_drag_logs_nothing(page, server):
 def test_csv_link(page, server):
     _ready(page, server)
     assert page.get_attribute("#decision-csv", "href") == "/decisions.csv"
+
+
+_DELAY_SCRIPT = """
+(() => {
+  const orig = window.fetch.bind(window);
+  window.fetch = async (...args) => {
+    const url = String(args[0] && args[0].url ? args[0].url : args[0]);
+    if (url.includes('/recommend') && window.__delayNext) {
+      const ms = window.__delayNext;
+      window.__delayNext = 0;
+      const res = await orig(...args);
+      await new Promise((r) => setTimeout(r, ms));
+      return res;
+    }
+    return orig(...args);
+  };
+})();
+"""
+
+
+def test_inflight_preview_dropped_on_input_change(page, server):
+    page.add_init_script(_DELAY_SCRIPT)
+    _ready(page, server)
+    posts = []
+    page.on("request", lambda r: posts.append(r) if _is_post("/decisions")(r) else None)
+    page.click("#adjust")
+    page.fill("#override-input", "9000")
+    # The response must land inside the 300 ms input debounce, before the new request bumps seq.
+    page.evaluate("window.__delayNext = 250")
+    page.click("#override-preview")
+    page.evaluate("window.__delayNext = 1500")  # hold the capacity request in flight
+    page.fill("#capacity", "6000")
+    page.wait_for_timeout(900)  # stale preview response has landed; new one is still pending
+    assert page.is_hidden("#operator-note")
+    assert page.is_disabled("#override-confirm")
+    page.wait_for_timeout(2000)
+    assert page.is_hidden("#operator-note")
+    assert page.is_disabled("#override-confirm")
+    assert page.is_hidden("#api-error")
+    assert posts == []
+
+
+def test_edit_between_preview_and_response_disarms_confirm(page, server):
+    page.add_init_script(_DELAY_SCRIPT)
+    _ready(page, server)
+    page.click("#adjust")
+    page.fill("#override-input", "9000")
+    page.evaluate("window.__delayNext = 1500")
+    page.click("#override-preview")
+    page.wait_for_timeout(200)
+    page.fill("#override-input", "8000")
+    page.wait_for_function("document.querySelector('#operator-note').textContent.includes('9,000')")
+    assert page.is_disabled("#override-confirm")
