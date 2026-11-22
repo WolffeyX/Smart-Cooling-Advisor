@@ -28,6 +28,19 @@ class RecommendRequest(BaseModel):
         return self
 
 
+class DecisionRequest(RecommendRequest):
+    action: Literal["approved", "adjusted"]
+
+    @model_validator(mode="after")
+    def _override_matches_action(self):
+        has = self.charge_target_override_rth is not None
+        if self.action == "adjusted" and not has:
+            raise ValueError("charge_target_override_rth is required when adjusted")
+        if self.action == "approved" and has:
+            raise ValueError("charge_target_override_rth must be omitted when approved")
+        return self
+
+
 class Scenario(BaseModel):
     source_date: str
     day_type: DayType
