@@ -162,20 +162,22 @@
     document.dispatchEvent(new CustomEvent("sca:data", { detail: data }));
   }
 
-  function impactText(prefix, line) {
-    const less = line.kwh_saved >= 0;
+  function impactText(baseline, line) {
+    const prefix = `vs ${baseline}`;
+    const kwh = Math.round(Math.abs(line.kwh_saved));
     const pct = line.pct_saved === null ? "" : ` (${fmt(Math.abs(line.pct_saved), nf1)} %)`;
-    const dir = less ? "less" : "more";
+    if (kwh === 0) return `${prefix}: same electric-chiller energy as ${baseline}${pct}`;
+    const dir = line.kwh_saved >= 0 ? "less" : "more";
     return (
-      `${prefix}: ${fmt(Math.abs(line.kwh_saved), nf1)} kWh ${dir} electric-chiller energy${pct}` +
-      ` · ≈ ${fmt(Math.abs(line.co2_kg_saved), nf1)} kg CO₂ ${dir}`
+      `${prefix}: ${fmt(kwh)} kWh ${dir} electric-chiller energy${pct}` +
+      ` · ≈ ${fmt(Math.abs(line.co2_kg_saved))} kg CO₂ ${dir}`
     );
   }
 
   function renderImpact() {
     const im = data.impact;
-    $("impact-full").textContent = impactText("vs always filling the tank", im.vs_always_full);
-    $("impact-rule").textContent = impactText("vs weekday/weekend rule", im.vs_calendar_rule);
+    $("impact-full").textContent = impactText("always filling the tank", im.vs_always_full);
+    $("impact-rule").textContent = impactText("weekday/weekend rule", im.vs_calendar_rule);
     $("impact-factor").textContent =
       `Grid factor ${im.grid_kg_per_kwh.toFixed(3)} kg CO₂/kWh, ${im.grid_source} · ` +
       "electricity only · ASSUMPTION";

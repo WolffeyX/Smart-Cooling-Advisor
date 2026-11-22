@@ -533,12 +533,17 @@ def test_3d_pipes_connected(page, server):
     st = page.evaluate("window.__plant3d")
     boxes, ends, pts = st["boxes"], st["segmentEnds"], st["segmentPoints"]
     assert {"campus_header", "to_academic", "to_evening", "to_base", "return"} <= set(ends)
+    stubs = st["stubPoints"]
+    assert len(stubs) == 7
+    TOL = 0.35
+    lines = {**pts, **stubs}
+    ends = {**ends, **{k: [q[0], q[-1]] for k, q in stubs.items()}}
     for key, e in ends.items():
         for p in e:
-            near_box = any(_dist_box(p, b) <= 0.6 for b in boxes)
+            near_box = any(_dist_box(p, b) <= TOL for b in boxes)
             near_pipe = any(
-                _dist_seg(p, q[i], q[i + 1]) <= 0.6
-                for k, q in pts.items()
+                _dist_seg(p, q[i], q[i + 1]) <= TOL
+                for k, q in lines.items()
                 if k != key
                 for i in range(len(q) - 1)
             )
@@ -665,8 +670,8 @@ def test_no_webgl_fallback(browser, server):
     ctx.close()
 
 
-def _impact_line(line, base):
-    kwh = f"{abs(line['kwh_saved']):,.1f}"
+def _impact_line(line):
+    kwh = f"{round(abs(line['kwh_saved'])):,}"
     word = "more" if line["kwh_saved"] < 0 else "less"
     return kwh, word
 
@@ -676,7 +681,7 @@ def test_impact_card(page, server):
     api = page.request.post(f"{server}/recommend", data=BASE_BODY).json()
     page.wait_for_selector("#impact-full:not(:empty)")
     full = page.inner_text("#impact-full").replace("\u00a0", " ")
-    kwh, word = _impact_line(api["impact"]["vs_always_full"], "full")
+    kwh, word = _impact_line(api["impact"]["vs_always_full"])
     assert f"{kwh} kWh {word}" in full
     assert "CO₂" in full
     assert "0.740" in page.inner_text("#impact-factor")
@@ -695,7 +700,7 @@ def test_impact_card_negative_says_more(page, server):
         page.fill("#temp", "33")
     page.wait_for_function("document.getElementById('scenario-date').dataset.date === '2024-10-23'")
     rule = page.inner_text("#impact-rule").replace("\u00a0", " ")
-    kwh, _ = _impact_line(api["impact"]["vs_calendar_rule"], "rule")
+    kwh, _ = _impact_line(api["impact"]["vs_calendar_rule"])
     assert f"{kwh} kWh more" in rule
     assert "kg CO₂ more" in rule
     assert "−" not in rule

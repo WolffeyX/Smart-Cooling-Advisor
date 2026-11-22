@@ -209,6 +209,7 @@
       hook.camera = null;
       Object.defineProperty(hook, "camera", { get: () => api.getCamera(), enumerable: true });
       hook.segmentPoints = m.SEGMENT_POINTS;
+      hook.stubPoints = m.STUB_POINTS;
       hook.segmentEnds = Object.fromEntries(Object.entries(m.SEGMENT_POINTS).map(([k, p]) => [k, [p[0], p[p.length - 1]]]));
       hook.boxes = m.BOXES;
       hook.setCamera = (p) => api.setCamera(p);

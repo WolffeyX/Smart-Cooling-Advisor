@@ -37,6 +37,7 @@ const STUBS = [
   ...[-16, -12.4, -8.8].map((x) => [[x, 0.5, 10.5], [x, 0.5, 9.3]]),
 ];
 const ECS_X = [0, 1, 2, 3].map((i) => -16 + i * 3.6);
+export const STUB_POINTS = Object.fromEntries(STUBS.map((p, i) => [`stub${i}`, p]));
 export const BOXES = [
   { id: "sac0", min: [-16.5, 0, -7.5], max: [-11.5, 2.5, -4.5] },
   { id: "sac1", min: [-16.5, 0, -11.1], max: [-11.5, 2.5, -8.1] },
