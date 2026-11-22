@@ -89,3 +89,10 @@ svg text { font-family: inherit; }
 .scrub-title { margin: 6px 0 0; color: #B9C5D6; font-size: 13px; }
 .clock { min-width: 110px; }
 .charthead .note { margin: 0; }
+.adjust-box { margin-top: 12px; padding: 12px; border: 1px solid var(--line); border-radius: 8px; }
+.adjust-box label { display: block; font-weight: 600; margin-bottom: 4px; }
+.adjust-box input { width: 100%; padding: 6px 8px; font: inherit; border: 1px solid var(--line); border-radius: 6px; }
+.adjust-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.btn-ghost-dark { background: transparent; color: var(--ink); border-color: var(--line); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+#decision-log td, #decision-log th { white-space: nowrap; }

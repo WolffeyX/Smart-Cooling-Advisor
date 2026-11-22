@@ -92,9 +92,19 @@
     </dl>
     <div id="status-note" class="status" role="status"></div>
     <div class="actions">
-      <button type="button" class="btn btn-dark" data-toast>Approve plan</button>
-      <button type="button" class="btn btn-outline" data-toast>Adjust manually</button>
+      <button type="button" id="approve" class="btn btn-dark">Approve plan</button>
+      <button type="button" id="adjust" class="btn btn-outline" aria-expanded="false" aria-controls="adjust-box">Adjust manually</button>
     </div>
+    <div id="adjust-box" class="adjust-box" hidden>
+      <label for="override-input">Your charge target (RTh)</label>
+      <input id="override-input" type="number" min="0" max="10000" step="1">
+      <div class="adjust-actions">
+        <button type="button" id="override-preview" class="btn btn-outline">Preview</button>
+        <button type="button" id="override-confirm" class="btn btn-dark" disabled>Confirm and log</button>
+        <button type="button" id="override-cancel" class="btn btn-ghost-dark">Cancel</button>
+      </div>
+    </div>
+    <p id="operator-note" class="status warn" role="status" hidden></p>
     <p class="note">The operator always decides. The advisor only suggests the charge amount.</p>
   </section>
 </main>
@@ -135,8 +145,23 @@
   </details>
 </section>
 
+<section class="card" aria-labelledby="t-log">
+  <div class="charthead"><h2 id="t-log">Decision log</h2><span class="note">Newest 20 &middot; SIMULATED &middot; <a id="decision-csv" href="/decisions.csv">Download CSV</a></span></div>
+  <div class="tablewrap">
+    <table id="decision-log">
+      <thead><tr>
+        <th>Logged at</th><th>Action</th><th>Day type</th><th>AI target</th>
+        <th>Operator target</th><th>Outcome</th><th>Electric-chiller energy</th>
+      </tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+  <p id="decision-empty" class="note">No decisions logged yet. A row is written only when you approve the plan or confirm an adjustment.</p>
+</section>
+
 <footer class="foot">SIMULATED prototype. Synthetic campus load, one year of weather, no UTP plant data. The operator always decides.</footer>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
+<script src="decisions.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

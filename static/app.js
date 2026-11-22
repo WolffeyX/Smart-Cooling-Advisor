@@ -22,6 +22,7 @@
   let playTimer = null;
   let toastTimer = null;
   let idx = NOON;
+  let override = null; // operator charge target (RTh) being previewed, else null
 
   function el(name, attrs = {}, parent = null, text = null) {
     const e = document.createElementNS(NS, name);
@@ -55,7 +56,16 @@
     $("level-out").textContent = `${fmt(b.tank_level_22_rth)} RTh`;
   }
 
+  function clearOverride() {
+    override = null;
+    $("adjust-box").hidden = true;
+    $("adjust").setAttribute("aria-expanded", "false");
+    $("operator-note").hidden = true;
+    $("override-confirm").disabled = true;
+  }
+
   function schedule() {
+    clearOverride(); // any input change makes a previewed override stale
     showInputs();
     clearTimeout(timer);
     timer = setTimeout(fetchRecommendation, 300);
@@ -64,6 +74,7 @@
   async function fetchRecommendation() {
     const mySeq = ++seq;
     const body = readInputs();
+    if (override !== null) body.charge_target_override_rth = override;
     document.body.classList.add("loading");
     try {
       const res = await fetch("/recommend", {
@@ -142,7 +153,21 @@
       ul.appendChild(li);
     }
     $("scrubber").max = data.hourly.length - 1;
+    renderOperator();
     renderTime();
+    document.dispatchEvent(new CustomEvent("sca:data", { detail: data }));
+  }
+
+  function renderOperator() {
+    const op = data.operator_plan;
+    const note = $("operator-note");
+    note.hidden = !op;
+    $("override-confirm").disabled = !op;
+    if (op) {
+      note.textContent =
+        `Operator plan: ${fmt(op.charge_target_rth)} RTh · ` +
+        `AI recommended ${fmt(data.recommendation.charge_target_rth)} RTh. ${op.message}`;
+    }
   }
 
   function renderTable() {
@@ -194,6 +219,7 @@
     drawPlant(h);
     drawSupply();
     drawTank();
+    document.dispatchEvent(new CustomEvent("sca:hour", { detail: { idx, row: h, data } }));
   }
 
   // ---------- plant view ----------
@@ -369,6 +395,56 @@
     }, 700);
   }
 
+  // ---------- decisions ----------
+  function openAdjust() {
+    if (!data) return;
+    const inp = $("override-input");
+    inp.max = reqBody.tank_capacity_rth;
+    inp.min = 0;
+    inp.value = Math.round(data.recommendation.charge_target_rth);
+    $("override-confirm").disabled = true;
+    $("adjust-box").hidden = false;
+    $("adjust").setAttribute("aria-expanded", "true");
+    inp.focus();
+  }
+
+  function previewOverride() {
+    const inp = $("override-input");
+    if (inp.value === "" || !inp.checkValidity()) {
+      inp.reportValidity();
+      return;
+    }
+    override = Number(inp.value);
+    clearTimeout(timer);
+    fetchRecommendation();
+  }
+
+  async function postDecision(button, action) {
+    if (!data || button.disabled) return;
+    const body = { ...reqBody, action };
+    if (action === "approved") delete body.charge_target_override_rth;
+    button.disabled = true;
+    try {
+      const res = await fetch("/decisions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      await res.json();
+      if (action === "adjusted") {
+        clearOverride();
+        fetchRecommendation(); // back to the AI plan view
+      }
+      if (window.SCADecisions) await window.SCADecisions.refresh();
+      toast("Logged · SIMULATED");
+    } catch (err) {
+      toast(`Could not log the decision (${err.message})`);
+    } finally {
+      button.disabled = action === "adjusted" && override === null;
+    }
+  }
+
   function toast(msg) {
     const t = $("toast");
     t.textContent = msg;
@@ -403,9 +479,29 @@
     $("scrubber").value = NOON;
     renderTime();
   });
+  $("approve").addEventListener("click", () => postDecision($("approve"), "approved"));
+  $("adjust").addEventListener("click", openAdjust);
+  $("override-preview").addEventListener("click", previewOverride);
+  $("override-input").addEventListener("input", () => { $("override-confirm").disabled = true; });
+  $("override-confirm").addEventListener("click", () => postDecision($("override-confirm"), "adjusted"));
+  $("override-cancel").addEventListener("click", () => {
+    const had = override !== null;
+    clearOverride();
+    if (had) fetchRecommendation();
+  });
   document.querySelectorAll("[data-toast]").forEach((b) => {
     b.addEventListener("click", () => toast("Demo only, nothing is sent"));
   });
+
+  window.SCA = {
+    getData: () => data,
+    setHour(i) {
+      if (!data) return;
+      idx = Math.max(0, Math.min(data.hourly.length - 1, Number(i)));
+      stopPlay();
+      renderTime();
+    },
+  };
 
   showInputs();
   fetchRecommendation();

@@ -1,7 +1,9 @@
 """Browser tests for the one-page dashboard (Playwright sync API, Chromium)."""
 
+import os
 import subprocess
 import sys
+import tempfile
 import time
 import urllib.request
 
@@ -26,10 +28,13 @@ BASE_BODY = {
 
 @pytest.fixture(scope="session")
 def server():
+    log_dir = tempfile.mkdtemp(prefix="sca-e2e-")
+    env = {**os.environ, "SCA_DECISION_LOG": os.path.join(log_dir, "decision_log.csv")}
     proc = subprocess.Popen(
         [sys.executable, "-m", "uvicorn", "app.main:app", "--port", str(PORT)],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
+        env=env,
     )
     try:
         deadline = time.time() + 60
@@ -150,8 +155,9 @@ def test_play_stops_at_21_and_reset(page, server):
 
 def test_approve_shows_toast(page, server):
     _ready(page, server)
-    page.click("text=Approve plan")
-    assert "Demo only, nothing is sent" in page.inner_text("#toast")
+    page.click("#approve")
+    page.wait_for_function("document.querySelector('#toast').textContent.includes('Logged')")
+    assert "Logged · SIMULATED" in page.inner_text("#toast")
 
 
 def test_sketch_wording(page, server):
@@ -165,3 +171,84 @@ def test_sketch_wording(page, server):
     assert "Tomorrow is a" in page.inner_text("body")
     page.click("#reset")
     assert page.inner_text("#clock").endswith("tomorrow")
+
+
+def _is_post(url_end):
+    return lambda r: r.url.endswith(url_end) and r.method == "POST"
+
+
+def _rows(page):
+    return page.locator("#decision-log tbody tr").count()
+
+
+def test_approve_logs_one_row(page, server):
+    _ready(page, server)
+    page.wait_for_function("window.SCADecisions !== undefined")
+    page.wait_for_timeout(500)
+    before = _rows(page)
+    posts = []
+    page.on("request", lambda r: posts.append(r) if _is_post("/decisions")(r) else None)
+    page.dblclick("#approve")  # a double click must still log exactly one row
+    page.wait_for_function(
+        f"document.querySelectorAll('#decision-log tbody tr').length === {before + 1}"
+    )
+    page.wait_for_timeout(500)
+    assert len(posts) == 1
+    assert "approved" in page.inner_text("#decision-log tbody tr:first-child")
+    assert _rows(page) == before + 1
+    assert not page.is_disabled("#approve")
+
+
+def test_adjust_preview_then_confirm(page, server):
+    _ready(page, server)
+    hero = page.inner_text("#hero-target")
+    page.click("#adjust")
+    assert page.is_visible("#adjust-box")
+    page.fill("#override-input", "9000")
+    with page.expect_request(_is_post("/recommend")) as req:
+        page.click("#override-preview")
+    assert req.value.post_data_json["charge_target_override_rth"] == 9000
+    page.wait_for_function("document.querySelector('#operator-note').textContent.includes('9,000')")
+    assert "9,000" in page.inner_text("#operator-note")
+    assert "AI recommended" in page.inner_text("#operator-note")
+    assert page.inner_text("#hero-target") == hero
+    before = _rows(page)
+    with page.expect_request(_is_post("/decisions")) as post:
+        page.click("#override-confirm")
+    assert post.value.post_data_json["action"] == "adjusted"
+    page.wait_for_function(
+        f"document.querySelectorAll('#decision-log tbody tr').length === {before + 1}"
+    )
+    first = page.inner_text("#decision-log tbody tr:first-child")
+    assert "adjusted" in first and "9,000" in first
+    assert page.is_hidden("#adjust-box")
+
+
+def test_input_change_clears_override(page, server):
+    _ready(page, server)
+    page.click("#adjust")
+    page.fill("#override-input", "9000")
+    page.click("#override-preview")
+    page.wait_for_function("document.querySelector('#operator-note').textContent.includes('9,000')")
+    with page.expect_request(_is_post("/recommend")) as req:
+        page.fill("#capacity", "6000")
+    assert "charge_target_override_rth" not in req.value.post_data_json
+    page.wait_for_timeout(800)
+    assert page.is_hidden("#adjust-box")
+    assert page.is_hidden("#operator-note")
+    assert page.is_hidden("#api-error")
+
+
+def test_slider_drag_logs_nothing(page, server):
+    _ready(page, server)
+    posts = []
+    page.on("request", lambda r: posts.append(r) if _is_post("/decisions")(r) else None)
+    for sel, val in (("#temp", "33"), ("#error", "10"), ("#margin", "20")):
+        page.fill(sel, val)
+    page.wait_for_timeout(800)
+    assert posts == []
+
+
+def test_csv_link(page, server):
+    _ready(page, server)
+    assert page.get_attribute("#decision-csv", "href") == "/decisions.csv"
