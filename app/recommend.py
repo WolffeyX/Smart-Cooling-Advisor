@@ -7,6 +7,7 @@ from app.plant import HOUR_LABELS, HOURS, dispatch_day, summarise_day
 from app.scenario import DayBank, build_scenario
 
 _HOURLY_INT = {"ec_count"}
+_SCENARIO_HOURLY = {"academic_rt", "evening_rt", "base_rt"}
 _HOURLY_FIELDS = [
     "campus_load_rt",
     "sac_rt",
@@ -17,6 +18,9 @@ _HOURLY_FIELDS = [
     "ec_kw",
     "tank_level_rth",
     "unmet_rt",
+    "academic_rt",
+    "evening_rt",
+    "base_rt",
 ]
 
 
@@ -110,6 +114,12 @@ def _assumptions(sc, preset: str, levels: dict) -> list[str]:
             "about −9 % vs always fill and about −2 % vs the weekday/weekend rule."
         ),
         ("ASSUMPTION: one year of weather only (2024); no measured UTP/PMMD plant data."),
+        (
+            "ASSUMPTION: the three campus blocks split the synthetic load by hour — Academic = "
+            "room load 08:00–17:59, Library & evening classes = room load 18:00–21:59, Data "
+            f"centre & labs = the 24/7 base load. About {sc.room_equivalents:,} reference 60 m² "
+            "room-equivalents (SIMULATED); not real UTP buildings."
+        ),
     ]
 
 
@@ -167,7 +177,10 @@ def build_response(bank: DayBank, req: dict, base_params: dict, round_values: bo
     for i, label in enumerate(HOUR_LABELS):
         row = {"hour": label}
         for k in _HOURLY_FIELDS:
-            row[k] = int(ai_run[k][i]) if k in _HOURLY_INT else n(ai_run[k][i])
+            if k in _SCENARIO_HOURLY:
+                row[k] = n(getattr(sc, k)[i])
+            else:
+                row[k] = int(ai_run[k][i]) if k in _HOURLY_INT else n(ai_run[k][i])
         hourly.append(row)
 
     preset = os.environ.get("SCA_PARAMS_PRESET", "default")
@@ -211,6 +224,8 @@ def build_response(bank: DayBank, req: dict, base_params: dict, round_values: bo
             "ec_unit_rt": n(p["ec_unit_rt"]),
             "tes_max_discharge_rt": n(p["tes_max_discharge_rt"]),
             "charge_window": "22:00-08:00",
+            "room_equivalents": int(sc.room_equivalents),
+            "tank_capacity_rth": cap,
         },
         "assumptions": _assumptions(
             sc, preset, {k: float(r["tank_level_rth"][-1]) for k, r in runs.items()}

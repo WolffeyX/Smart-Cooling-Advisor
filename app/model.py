@@ -41,7 +41,7 @@ def train_classifier(weather: pd.DataFrame) -> dict:
     }
 
 
-LOAD_COLUMNS = ["time", "total_rt", "base_rt", "room_rt"]
+LOAD_COLUMNS = ["time", "total_rt", "base_rt", "room_rt", "room_scale"]
 LOAD_KEYS = ("base_load_rt", "target_peak_rt", "evening_factor", "noise_daily", "noise_hourly")
 
 
@@ -54,7 +54,7 @@ def load_hash(params: dict) -> str:
 def campus_load_frame(
     weather: pd.DataFrame, params: dict, cache_dir: Path = DATA_DIR
 ) -> pd.DataFrame:
-    """Hourly campus load (time, total_rt, base_rt, room_rt), cached as CSV by load hash."""
+    """Hourly campus load (time, total_rt, base_rt, room_rt, room_scale), cached as CSV by load hash."""
     path = Path(cache_dir) / f"campus_load_2024_{load_hash(params)}.csv"
     if path.exists():
         try:
@@ -63,7 +63,7 @@ def campus_load_frame(
                 return cached
         except (OSError, ValueError, pd.errors.ParserError, pd.errors.EmptyDataError):
             pass  # corrupt or partial cache: fall through and rebuild
-    total, _ = step5_plant.campus_load(weather, params)
+    total, scale = step5_plant.campus_load(weather, params)
     base = params["base_load_rt"] * (1 + 0.03 * (weather["temp"].to_numpy() - 27))
     frame = pd.DataFrame(
         {
@@ -71,6 +71,7 @@ def campus_load_frame(
             "total_rt": total,
             "base_rt": base,
             "room_rt": total - base,
+            "room_scale": float(scale),
         }
     )
     path.parent.mkdir(parents=True, exist_ok=True)

@@ -61,6 +61,9 @@ class HourRow(BaseModel):
     ec_kw: float
     tank_level_rth: float
     unmet_rt: float
+    academic_rt: float
+    evening_rt: float
+    base_rt: float
 
 
 class ComparisonRow(BaseModel):
@@ -79,6 +82,8 @@ class Plant(BaseModel):
     ec_unit_rt: float
     tes_max_discharge_rt: float
     charge_window: str
+    room_equivalents: int
+    tank_capacity_rth: float
 
 
 class RecommendResponse(BaseModel):

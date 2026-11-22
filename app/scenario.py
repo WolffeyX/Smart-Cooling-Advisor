@@ -61,6 +61,10 @@ class Scenario:
     training_months: list[int]
     forecast_kind: str
     load_rt: np.ndarray
+    academic_rt: np.ndarray
+    evening_rt: np.ndarray
+    base_rt: np.ndarray
+    room_equivalents: int
     t_out: np.ndarray
     actual_need_rth: float
     ai_forecast_model_rth: float
@@ -74,6 +78,11 @@ def build_scenario(bank: DayBank, day_type: str, tmax_c: float, params: dict) ->
     load = bank.load.set_index("time").loc[idx]
     weather = bank.weather.set_index("time").loc[idx]
     load_rt = (load["base_rt"] + m * load["room_rt"]).to_numpy(dtype=float)
+    room = m * load["room_rt"].to_numpy(dtype=float)
+    h = idx.hour.to_numpy()
+    academic = np.where((h >= 8) & (h <= 17), room, 0.0)
+    evening = np.where((h >= 18) & (h <= 21), room, 0.0)
+    base = load_rt - academic - evening
     t_out = weather["temp"].to_numpy(dtype=float)
     actual = float(np.maximum(load_rt[10:24] - params["sac_available_rt"], 0).sum())
     fc = bank.forecasts
@@ -84,6 +93,10 @@ def build_scenario(bank: DayBank, day_type: str, tmax_c: float, params: dict) ->
         training_months=list(fc.training_months[D]),
         forecast_kind=FORECAST_KIND_OCT_DEC if D.month >= 10 else FORECAST_KIND_LOMO,
         load_rt=load_rt,
+        academic_rt=academic,
+        evening_rt=evening,
+        base_rt=base,
+        room_equivalents=round(float(load["room_scale"].iloc[0])),
         t_out=t_out,
         actual_need_rth=actual,
         ai_forecast_model_rth=float(fc.ai[D]),
