@@ -1,3 +1,138 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><title>Smart Cooling Advisor</title></head>
-<body><h1>Smart Cooling Advisor</h1><p>SIMULATED prototype placeholder.</p></body></html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Smart Cooling Advisor</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="top">
+  <div>
+    <h1>Smart Cooling Advisor</h1>
+    <p class="sub">UTP Gas District Cooling &middot; tonight's tank-charging plan</p>
+    <p class="scenario">Scenario: <span id="scenario-date" data-date="">&hellip;</span></p>
+  </div>
+  <div class="badges">
+    <span class="badge badge-sim">SIMULATED prototype &middot; illustrative numbers</span>
+    <span class="badge">Model: random forest, day-ahead</span>
+  </div>
+</header>
+
+<div id="api-error" class="error" role="alert" hidden></div>
+
+<main class="grid">
+  <section class="card" aria-labelledby="t-test">
+    <h2 id="t-test">Test new values</h2>
+    <div class="field">
+      <span class="label" id="l-day">Day type</span>
+      <div id="day-type" class="seg" role="group" aria-labelledby="l-day">
+        <button type="button" data-value="weekday" class="on" aria-pressed="true">Weekday</button>
+        <button type="button" data-value="exam_week" aria-pressed="false">Exam week</button>
+        <button type="button" data-value="semester_break" aria-pressed="false">Semester break</button>
+        <button type="button" data-value="weekend" aria-pressed="false">Weekend</button>
+      </div>
+    </div>
+    <div class="field">
+      <label for="temp">Forecast max temperature <output id="temp-out" for="temp"></output></label>
+      <input id="temp" type="range" min="24" max="38" step="0.5" value="31">
+    </div>
+    <div class="field">
+      <label for="error">AI forecast error <output id="error-out" for="error"></output></label>
+      <input id="error" type="range" min="-30" max="30" step="1" value="0">
+    </div>
+    <div class="field">
+      <label for="margin">Safety margin <output id="margin-out" for="margin"></output></label>
+      <input id="margin" type="range" min="0" max="60" step="1" value="10">
+    </div>
+    <div class="field">
+      <label for="capacity">Tank usable capacity <output id="capacity-out" for="capacity"></output></label>
+      <input id="capacity" type="range" min="5000" max="25000" step="500" value="10000">
+    </div>
+    <div class="field">
+      <label for="level">Tank level at 22:00 <output id="level-out" for="level"></output></label>
+      <input id="level" type="range" min="0" max="10000" step="100" value="1500">
+    </div>
+    <p class="note" id="plant-note">Fixed plant (not adjustable here): <span id="plant-text">&hellip;</span></p>
+  </section>
+
+  <section class="card plant-card" aria-labelledby="t-plant">
+    <h2 id="t-plant" class="on-dark">Plant view <span class="sim-tag">SIMULATED</span></h2>
+    <svg id="plant-svg" viewBox="0 0 640 330" role="img" aria-label="Plant view: absorption chillers, electric chillers, storage tank and campus buildings"></svg>
+    <div class="controls">
+      <button type="button" id="play" class="btn btn-primary">Play 24 h</button>
+      <button type="button" id="reset" class="btn btn-ghost">Reset</button>
+      <label class="scrub"><span id="scrub-label" class="sr">Hour</span>
+        <input id="scrubber" type="range" min="0" max="23" step="1" value="14" aria-labelledby="scrub-label">
+      </label>
+      <output id="clock" class="clock">12:00</output>
+    </div>
+    <div class="tiles">
+      <div class="tile"><span class="tile-k">Campus load</span><strong id="tile-load"></strong></div>
+      <div class="tile"><span class="tile-k">Absorption chillers</span><strong id="tile-sac"></strong></div>
+      <div class="tile"><span class="tile-k">Tank in / out</span><strong id="tile-tank"></strong></div>
+      <div class="tile"><span class="tile-k">Electric chillers</span><strong id="tile-ec"></strong></div>
+    </div>
+  </section>
+
+  <section class="card reco" aria-labelledby="t-reco">
+    <h2 id="t-reco">Tonight's recommendation</h2>
+    <p class="k">Charge the tank to</p>
+    <p class="hero" id="hero-target"></p>
+    <dl class="rows">
+      <dt>Chiller plan</dt><dd id="chiller-plan"></dd>
+      <dt>AI forecast of tomorrow's need</dt><dd id="ai-need"></dd>
+      <dt>Actual need (simulated replay)</dt><dd id="actual-need"></dd>
+      <dt>Daytime electric chillers</dt><dd id="daytime-ec"></dd>
+      <dt>Cooling shortfall</dt><dd id="shortfall"></dd>
+    </dl>
+    <div id="status-note" class="status" role="status"></div>
+    <div class="actions">
+      <button type="button" class="btn btn-primary" data-toast>Approve plan</button>
+      <button type="button" class="btn btn-outline" data-toast>Adjust manually</button>
+    </div>
+    <p class="note">The operator always decides.</p>
+  </section>
+</main>
+
+<section class="charts">
+  <figure class="card chart">
+    <h2>Who supplies the cold</h2>
+    <svg id="chart-supply" viewBox="0 0 640 240" role="img" aria-label="Stacked hourly bars of absorption, tank, electric and charging cooling"></svg>
+    <div class="legend">
+      <span><i class="sw sw-sac"></i>Absorption</span><span><i class="sw sw-tank"></i>Tank</span>
+      <span><i class="sw sw-ec"></i>Electric</span><span><i class="sw sw-chg"></i>Charging</span>
+    </div>
+    <figcaption>Hourly cooling supply in RT, 22:00 to 21:00. SIMULATED.</figcaption>
+  </figure>
+  <figure class="card chart">
+    <h2>Tank level over the next 24 h</h2>
+    <svg id="chart-tank" viewBox="0 0 640 240" role="img" aria-label="Line chart of tank level over 24 hours"></svg>
+    <figcaption>Stored cold (RTh) against usable capacity. SIMULATED.</figcaption>
+  </figure>
+</section>
+
+<section class="card">
+  <h2>Same day, three ways to decide the charge</h2>
+  <div class="tablewrap">
+    <table id="comparison">
+      <thead><tr>
+        <th>Strategy</th><th>Charge target (RTh)</th><th>Electric-chiller energy (kWh)</th>
+        <th>vs always fill</th><th>Daytime EC hours</th><th>Shortfall (RTh)</th>
+        <th>Left in tank at 21:00 (RTh)</th>
+      </tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+  <p class="note" id="table-note">SIMULATED. On average the AI beats the weekday/weekend rule by about 1&ndash;2% of electric-chiller energy in cooler months and by about 0% in hot months. A single day can look much better or worse than that; cold left in the tank at 21:00 is counted as spent here.</p>
+  <details id="assumptions" open>
+    <summary>Assumptions and limits</summary>
+    <ul></ul>
+  </details>
+</section>
+
+<footer class="foot">SIMULATED prototype. Synthetic campus load, one year of weather, no UTP plant data. The operator always decides.</footer>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<script src="app.js"></script>
+</body>
+</html>

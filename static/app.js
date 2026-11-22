@@ -1,0 +1,394 @@
+"use strict";
+(() => {
+  const NS = "http://www.w3.org/2000/svg";
+  const nf = new Intl.NumberFormat("en-MY", { maximumFractionDigits: 0 });
+  const nf1 = new Intl.NumberFormat("en-MY", { maximumFractionDigits: 1 });
+  const $ = (id) => document.getElementById(id);
+  const fmt = (v, f = nf) => f.format(v).replace("-", "−");
+  const STRATEGY = {
+    always_full: "Always fill the tank",
+    calendar_rule: "Weekday/weekend rule",
+    ai_forecast: "AI forecast + margin",
+  };
+  const COLORS = { sac: "#0E6F6A", tank: "#2F80ED", ec: "#D98E04", chg: "#B8C2CC" };
+  const NOON = 14; // index of 12:00 in the 22:00-first hour order
+
+  let data = null;
+  let dayType = "weekday";
+  let seq = 0;
+  let applied = 0;
+  let timer = null;
+  let playTimer = null;
+  let toastTimer = null;
+  let idx = NOON;
+
+  function el(name, attrs = {}, parent = null, text = null) {
+    const e = document.createElementNS(NS, name);
+    for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+    if (text !== null) e.textContent = text;
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+
+  // ---------- inputs ----------
+  function readInputs() {
+    const cap = Number($("capacity").value);
+    $("level").max = cap;
+    if (Number($("level").value) > cap) $("level").value = cap;
+    return {
+      day_type: dayType,
+      forecast_max_temp_c: Number($("temp").value),
+      forecast_error_pct: Number($("error").value),
+      safety_margin_pct: Number($("margin").value),
+      tank_capacity_rth: cap,
+      tank_level_22_rth: Number($("level").value),
+    };
+  }
+
+  function showInputs() {
+    const b = readInputs();
+    $("temp-out").textContent = `${fmt(b.forecast_max_temp_c, nf1)} °C`;
+    $("error-out").textContent = `${b.forecast_error_pct > 0 ? "+" : ""}${fmt(b.forecast_error_pct)} %`;
+    $("margin-out").textContent = `${fmt(b.safety_margin_pct)} %`;
+    $("capacity-out").textContent = `${fmt(b.tank_capacity_rth)} RTh`;
+    $("level-out").textContent = `${fmt(b.tank_level_22_rth)} RTh`;
+  }
+
+  function schedule() {
+    showInputs();
+    clearTimeout(timer);
+    timer = setTimeout(fetchRecommendation, 300);
+  }
+
+  async function fetchRecommendation() {
+    const mySeq = ++seq;
+    document.body.classList.add("loading");
+    try {
+      const res = await fetch("/recommend", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(readInputs()),
+      });
+      if (!res.ok) throw new Error(`The advisor returned an error (HTTP ${res.status}).`);
+      const json = await res.json();
+      if (mySeq < applied || mySeq < seq) return; // a newer request exists: drop this one
+      applied = mySeq;
+      data = json;
+      $("api-error").hidden = true;
+      render();
+    } catch (err) {
+      if (mySeq === seq) {
+        $("api-error").textContent = `Could not update the plan: ${err.message}`;
+        $("api-error").hidden = false;
+      }
+    } finally {
+      if (mySeq === seq) document.body.classList.remove("loading");
+    }
+  }
+
+  // ---------- render ----------
+  function render() {
+    const r = data.recommendation;
+    const sc = data.scenario;
+    const d = new Date(`${sc.source_date}T00:00:00Z`);
+    const dateText = d.toLocaleDateString("en-GB", {
+      weekday: "short", day: "numeric", month: "short", year: "numeric", timeZone: "UTC",
+    });
+    const sd = $("scenario-date");
+    sd.textContent = `${dateText} (2024 replay, max ${fmt(sc.source_tmax_c, nf1)} °C)`;
+    sd.dataset.date = sc.source_date;
+
+    $("hero-target").textContent = `${fmt(r.charge_target_rth)} RTh`;
+    const ec = r.electric_chillers;
+    $("chiller-plan").textContent = ec.count
+      ? `${fmt(ec.count)} electric chillers, ${ec.start}–${ec.end}`
+      : "No electric chillers needed";
+    $("ai-need").textContent = `${fmt(r.ai_forecast_need_rth)} RTh`;
+    $("actual-need").textContent = `${fmt(r.actual_need_rth)} RTh`;
+    $("daytime-ec").textContent = `${fmt(r.daytime_ec_hours)} h`;
+    $("shortfall").textContent = `${fmt(r.shortfall_rth)} RTh`;
+
+    const note = $("status-note");
+    note.textContent = "";
+    let cls = "ok";
+    if (r.shortfall_rth > 0 || r.status === "shortfall") cls = "bad";
+    else if (r.capped || r.daytime_ec_hours > 0) cls = "warn";
+    note.className = `status ${cls}`;
+    if (cls === "bad") {
+      const icon = document.createElement("span");
+      icon.setAttribute("aria-hidden", "true");
+      icon.textContent = "⚠ ";
+      note.appendChild(icon);
+    }
+    note.appendChild(document.createTextNode(r.message));
+
+    const p = data.plant;
+    $("plant-text").textContent =
+      `absorption chillers ${fmt(p.sac_available_rt)} RT, ${fmt(p.n_ec)} electric chillers of ` +
+      `${fmt(p.ec_unit_rt)} RT, tank discharge up to ${fmt(p.tes_max_discharge_rt)} RT, ` +
+      `charging ${p.charge_window}.`;
+
+    renderTable();
+    const ul = document.querySelector("#assumptions ul");
+    ul.textContent = "";
+    for (const a of data.assumptions) {
+      const li = document.createElement("li");
+      li.textContent = a;
+      ul.appendChild(li);
+    }
+    $("scrubber").max = data.hourly.length - 1;
+    renderTime();
+  }
+
+  function renderTable() {
+    const body = document.querySelector("#comparison tbody");
+    body.textContent = "";
+    for (const c of data.comparison) {
+      const tr = document.createElement("tr");
+      if (c.strategy === "ai_forecast") tr.className = "ai";
+      const cells = [
+        STRATEGY[c.strategy] || c.strategy,
+        fmt(c.charge_target_rth),
+        fmt(c.ec_energy_kwh),
+        c.vs_always_full_pct === null ? "—" : `${fmt(c.vs_always_full_pct, nf1)} %`,
+        fmt(c.daytime_ec_hours),
+        fmt(c.shortfall_rth),
+        fmt(c.tank_level_21_rth),
+      ];
+      for (const t of cells) {
+        const td = document.createElement("td");
+        td.textContent = t;
+        tr.appendChild(td);
+      }
+      body.appendChild(tr);
+    }
+  }
+
+  // time-dependent parts: tiles, plant view, chart highlights
+  function renderTime() {
+    if (!data) return;
+    const h = data.hourly[idx];
+    $("scrubber").value = idx;
+    $("clock").textContent = h.hour;
+    $("tile-load").textContent = `${fmt(h.campus_load_rt)} RT`;
+    $("tile-sac").textContent = `${fmt(h.sac_rt)} RT`;
+    $("tile-tank").textContent =
+      h.charge_rt > 0 ? `+${fmt(h.charge_rt)} RT in` : `${fmt(h.tank_out_rt)} RT out`;
+    $("tile-ec").textContent = `${fmt(h.ec_count)} on · ${fmt(h.ec_kw)} kW`;
+    drawPlant(h);
+    drawSupply();
+    drawTank();
+  }
+
+  // ---------- plant view ----------
+  function box(svg, x, y, w, hgt, depth, color, topColor) {
+    el("rect", { x, y, width: w, height: hgt, fill: color }, svg);
+    el("polygon", {
+      points: `${x},${y} ${x + depth},${y - depth / 2} ${x + w + depth},${y - depth / 2} ${x + w},${y}`,
+      fill: topColor,
+    }, svg);
+    el("polygon", {
+      points: `${x + w},${y} ${x + w + depth},${y - depth / 2} ${x + w + depth},${y + hgt - depth / 2} ${x + w},${y + hgt}`,
+      fill: "#000", opacity: 0.25,
+    }, svg);
+  }
+
+  function drawPlant(h) {
+    const svg = $("plant-svg");
+    svg.textContent = "";
+    const cap = Number(readInputs().tank_capacity_rth);
+    const fill = Math.max(0, Math.min(1, h.tank_level_rth / cap));
+    const flow = (x1, y1, x2, y2, on, color) => {
+      const l = el("path", {
+        d: `M${x1},${y1} L${x2},${y2}`, stroke: color, "stroke-width": 4, fill: "none",
+        opacity: on ? 1 : 0.18,
+      }, svg);
+      if (on) l.setAttribute("stroke-dasharray", "8 6");
+    };
+    const label = (x, y, t, extra = {}) =>
+      el("text", { x, y, fill: "#E8EDF4", "font-size": 13, "font-weight": 600, ...extra }, svg, t);
+
+    // flows first so boxes sit on top
+    flow(180, 110, 455, 190, h.sac_rt > 0, "#2BB5AC");
+    flow(410, 165, 455, 205, h.tank_out_rt > 0, "#5AA0FF");
+    flow(140, 236, 290, 236, h.charge_rt > 0, "#B8C2CC");
+    flow(140, 250, 455, 250, h.ec_load_rt > 0, "#F2B73A");
+
+    box(svg, 30, 70, 130, 60, 22, COLORS.sac, "#16918B");
+    label(30, 58, "Absorption chillers");
+    el("text", { x: 40, y: 106, fill: "#fff", "font-size": 13 }, svg, `${fmt(h.sac_rt)} RT`);
+
+    label(30, 196, "Electric chillers");
+    const n = Math.max(data.plant.n_ec, h.ec_count);
+    for (let i = 0; i < n; i++) {
+      const on = i < h.ec_count;
+      const g = el("g", { class: on ? "ec on" : "ec" }, svg);
+      box(g, 30 + i * 38, 215, 28, 44, 10, on ? COLORS.ec : "#3A4A63", on ? "#F2B73A" : "#4A5A74");
+      el("text", {
+        x: 33 + i * 38, y: 280, fill: on ? "#F3D98B" : "#B9C5D6", "font-size": 11,
+      }, g, `EC${i + 1}`);
+    }
+
+    const tx = 290, ty = 70, tw = 120, th = 190;
+    label(tx, 58, "Cold-storage tank");
+    el("rect", {
+      x: tx, y: ty, width: tw, height: th, rx: 10, fill: "#17263D", stroke: "#4A5A74",
+      "stroke-width": 2,
+    }, svg);
+    const fh = Math.max(0, (th - 6) * fill);
+    el("rect", {
+      x: tx + 3, y: ty + th - 3 - fh, width: tw - 6, height: fh, rx: 7, fill: COLORS.tank,
+      class: "tank-fill",
+    }, svg);
+    el("text", {
+      x: tx + tw / 2, y: ty + th / 2, fill: "#fff", "font-size": 14, "font-weight": 700,
+      "text-anchor": "middle",
+    }, svg, `${fmt(h.tank_level_rth)} RTh`);
+    el("text", {
+      x: tx + tw / 2, y: ty + th + 18, fill: "#B9C5D6", "font-size": 12, "text-anchor": "middle",
+    }, svg, `of ${fmt(cap)} RTh`);
+
+    label(470, 58, "Campus buildings");
+    [[470, 150, 40, 110], [520, 110, 44, 150], [574, 170, 40, 90]].forEach(([x, y, w, hh]) => {
+      box(svg, x, y, w, hh, 10, "#5B6F8F", "#7C90B0");
+      for (let wy = y + 12; wy < y + hh - 8; wy += 22) {
+        el("rect", { x: x + 8, y: wy, width: w - 16, height: 8, fill: "#C9D6EA", opacity: 0.7 }, svg);
+      }
+    });
+    el("text", { x: 470, y: 292, fill: "#fff", "font-size": 13 }, svg, `Load ${fmt(h.campus_load_rt)} RT`);
+  }
+
+  // ---------- charts ----------
+  function axisGrid(svg, W, H, m, maxV, unit) {
+    const steps = 4;
+    for (let i = 0; i <= steps; i++) {
+      const v = (maxV * i) / steps;
+      const y = H - m.b - ((H - m.t - m.b) * i) / steps;
+      el("line", { x1: m.l, x2: W - m.r, y1: y, y2: y, stroke: "#E3E6EB" }, svg);
+      el("text", { x: m.l - 6, y: y + 4, "text-anchor": "end", "font-size": 11, fill: "#566273" }, svg, fmt(v));
+    }
+    el("text", { x: 4, y: 12, "font-size": 11, fill: "#566273" }, svg, unit);
+  }
+
+  function drawSupply() {
+    const svg = $("chart-supply");
+    svg.textContent = "";
+    const W = 640, H = 240, m = { l: 48, r: 8, t: 20, b: 26 };
+    const rows = data.hourly;
+    const tot = rows.map((r) => r.sac_rt + r.tank_out_rt + r.ec_load_rt + r.charge_rt);
+    const maxV = Math.max(1, ...tot) * 1.05;
+    axisGrid(svg, W, H, m, maxV, "RT");
+    const bw = (W - m.l - m.r) / rows.length;
+    const sy = (v) => ((H - m.t - m.b) * v) / maxV;
+    rows.forEach((r, i) => {
+      const g = el("g", { class: i === idx ? "bar sel" : "bar", "data-i": i, style: "cursor:pointer" }, svg);
+      let y = H - m.b;
+      for (const [k, c] of [["sac_rt", COLORS.sac], ["tank_out_rt", COLORS.tank], ["ec_load_rt", COLORS.ec], ["charge_rt", COLORS.chg]]) {
+        const hh = sy(r[k]);
+        if (hh > 0) el("rect", { x: m.l + i * bw + 2, y: y - hh, width: bw - 4, height: hh, fill: c }, g);
+        y -= hh;
+      }
+      el("rect", {
+        x: m.l + i * bw, y: m.t, width: bw, height: H - m.t - m.b, fill: "#000", opacity: 0,
+        "pointer-events": "all",
+      }, g);
+      if (i === idx) {
+        el("rect", {
+          x: m.l + i * bw, y: m.t, width: bw, height: H - m.t - m.b, fill: "none",
+          stroke: "#1B2430", "stroke-width": 2,
+        }, g);
+      }
+      if (i % 3 === 0) {
+        el("text", {
+          x: m.l + i * bw + bw / 2, y: H - 8, "text-anchor": "middle", "font-size": 11, fill: "#566273",
+        }, svg, r.hour);
+      }
+      g.addEventListener("click", () => { idx = i; stopPlay(); renderTime(); });
+    });
+  }
+
+  function drawTank() {
+    const svg = $("chart-tank");
+    svg.textContent = "";
+    const W = 640, H = 240, m = { l: 48, r: 8, t: 20, b: 26 };
+    const rows = data.hourly;
+    const cap = Number(readInputs().tank_capacity_rth);
+    const maxV = Math.max(cap, ...rows.map((r) => r.tank_level_rth)) * 1.05;
+    axisGrid(svg, W, H, m, maxV, "RTh");
+    const step = (W - m.l - m.r) / rows.length;
+    const px = (i) => m.l + step * (i + 0.5);
+    const py = (v) => H - m.b - ((H - m.t - m.b) * v) / maxV;
+    el("line", { x1: m.l, x2: W - m.r, y1: py(cap), y2: py(cap), stroke: "#C0392B", "stroke-dasharray": "5 4" }, svg);
+    el("text", { x: W - m.r, y: py(cap) - 4, "text-anchor": "end", "font-size": 11, fill: "#C0392B" }, svg, "capacity");
+    const pts = rows.map((r, i) => `${px(i)},${py(r.tank_level_rth)}`).join(" ");
+    el("polygon", { points: `${px(0)},${py(0)} ${pts} ${px(rows.length - 1)},${py(0)}`, fill: COLORS.tank, opacity: 0.18 }, svg);
+    el("polyline", { points: pts, fill: "none", stroke: COLORS.tank, "stroke-width": 2.5 }, svg);
+    el("circle", { cx: px(idx), cy: py(rows[idx].tank_level_rth), r: 5, fill: "#1B2430" }, svg);
+    rows.forEach((r, i) => {
+      if (i % 3 === 0) {
+        el("text", { x: px(i), y: H - 8, "text-anchor": "middle", "font-size": 11, fill: "#566273" }, svg, r.hour);
+      }
+    });
+  }
+
+  // ---------- playback ----------
+  function stopPlay() {
+    clearInterval(playTimer);
+    playTimer = null;
+    $("play").textContent = "Play 24 h";
+  }
+
+  function togglePlay() {
+    if (playTimer) return stopPlay();
+    if (!data) return;
+    if (idx >= data.hourly.length - 1) idx = 0;
+    $("play").textContent = "Pause";
+    renderTime();
+    playTimer = setInterval(() => {
+      idx = Math.min(idx + 1, data.hourly.length - 1);
+      renderTime();
+      if (idx >= data.hourly.length - 1) stopPlay();
+    }, 700);
+  }
+
+  function toast(msg) {
+    const t = $("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove("show"), 3000);
+  }
+
+  // ---------- wiring ----------
+  for (const id of ["temp", "error", "margin", "capacity", "level"]) {
+    $(id).addEventListener("input", schedule);
+  }
+  document.querySelectorAll("#day-type button").forEach((b) => {
+    b.addEventListener("click", () => {
+      dayType = b.dataset.value;
+      document.querySelectorAll("#day-type button").forEach((o) => {
+        o.classList.toggle("on", o === b);
+        o.setAttribute("aria-pressed", String(o === b));
+      });
+      schedule();
+    });
+  });
+  $("scrubber").addEventListener("input", (e) => {
+    idx = Number(e.target.value);
+    stopPlay();
+    renderTime();
+  });
+  $("play").addEventListener("click", togglePlay);
+  $("reset").addEventListener("click", () => {
+    stopPlay();
+    idx = NOON;
+    $("scrubber").value = NOON;
+    renderTime();
+  });
+  document.querySelectorAll("[data-toast]").forEach((b) => {
+    b.addEventListener("click", () => toast("Demo only, nothing is sent"));
+  });
+
+  showInputs();
+  fetchRecommendation();
+})();
