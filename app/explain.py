@@ -92,7 +92,7 @@ def _walk(tree, x: np.ndarray, feature_names: list[str]) -> list[dict]:
                 "feature": feature_names[f],
                 "label": FEATURE_INFO[feature_names[f]][0],
                 "threshold": float(t.threshold[node]),
-                "value": float(x[0, f]),
+                "value": float(np.float32(x[0, f])),  # the value sklearn actually compared
                 "direction": "≤" if nxt == t.children_left[node] else ">",
                 "samples": int(t.n_node_samples[node]),
                 "node_mean_rth": float(t.value[node][0][0]),

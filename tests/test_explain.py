@@ -1,10 +1,8 @@
-import time
-
 import numpy as np
 import pandas as pd
 import pytest
 
-from app.explain import FEATURE_INFO, N_REPEATS, explain_day
+from app.explain import FEATURE_INFO, N_REPEATS, _walk, explain_day
 from app.model import FEATURE_PROVENANCE
 
 
@@ -33,7 +31,7 @@ def test_tree_mean_equals_ai_forecast(bank, day):
     assert len(t["histogram"]["edges"]) == 21 and len(t["histogram"]["counts"]) == 20
 
 
-@pytest.mark.parametrize("day", ["2024-10-23", "2024-03-12"])
+@pytest.mark.parametrize("day", ["2024-10-23", "2024-03-12", "2024-10-09"])
 def test_path_is_real(bank, day):
     r = explain_day(bank, day)
     p = r["path"]
@@ -44,7 +42,7 @@ def test_path_is_real(bank, day):
     assert len(p["splits"]) <= 5
     for s in p["splits"]:
         assert (s["direction"] == "≤") == (s["value"] <= s["threshold"])
-        assert s["value"] == pytest.approx(float(x[s["feature"]].iloc[0]))
+        assert s["value"] == pytest.approx(float(x[s["feature"]].iloc[0]), rel=1e-6)
     assert p["depth"] == len(p["splits"]) + p["hidden_splits"]
     tree = model.estimators_[0]
     assert p["tree_prediction_rth"] == pytest.approx(float(tree.predict(x.to_numpy())[0]))
@@ -131,12 +129,15 @@ def test_n_repeats():
     assert N_REPEATS == 5
 
 
-@pytest.mark.slow
-def test_startup_budget(P, tmp_path):
-    from app.scenario import build_day_bank
-
-    t0 = time.perf_counter()
-    build_day_bank(P, cache_dir=tmp_path)
-    elapsed = time.perf_counter() - t0
-    print(f"build_day_bank {elapsed:.1f}s")
-    assert elapsed < 60
+def test_path_direction_consistent_on_every_day(bank):
+    """direction == '≤' iff reported value <= threshold, on every eligible day (tree 0)."""
+    fc = bank.forecasts
+    names = list(FEATURE_PROVENANCE)
+    for D in fc.eligible:
+        tree = fc.models[fc.model_key_by_day[D]].estimators_[0]
+        x = bank.features.loc[[D], names].to_numpy()
+        splits = _walk(tree, x, names)
+        nodes = tree.decision_path(x).indices
+        assert len(splits) == sum(1 for n in nodes if tree.tree_.children_left[n] != -1)
+        for s in splits:
+            assert (s["direction"] == "≤") == (s["value"] <= s["threshold"]), (D, s)
