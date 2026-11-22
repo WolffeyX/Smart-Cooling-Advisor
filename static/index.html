@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Smart Cooling Advisor</title>
 <link rel="stylesheet" href="styles.css">
+<script type="importmap">{"imports": {"three": "./vendor/three/three.module.js", "three/addons/": "./vendor/three/addons/"}}</script>
 </head>
 <body>
 <header class="top">
@@ -57,8 +58,19 @@
   </section>
 
   <section class="card plant-card" aria-labelledby="t-plant">
-    <h2 id="t-plant" class="on-dark">3D plant view &middot; 12:00 tomorrow</h2>
+    <div class="plant-head">
+      <h2 id="t-plant" class="on-dark">Plant view &middot; 12:00 tomorrow</h2>
+      <div class="view-toggle" role="group" aria-label="Plant view mode">
+        <button type="button" id="view-2d" class="on" aria-pressed="true">2D</button>
+        <button type="button" id="view-3d" aria-pressed="false">3D</button>
+      </div>
+    </div>
+    <p id="view-note" class="plant-caption" role="status" hidden></p>
     <p id="plant-caption" class="plant-caption"></p>
+    <div id="plant-3d" class="plant-3d" hidden>
+      <button type="button" id="reset-view" class="btn btn-ghost">Reset view</button>
+      <div id="plant-tooltip" class="plant-tooltip" role="status" hidden></div>
+    </div>
     <svg id="plant-svg" viewBox="0 0 640 330" role="img" aria-label="Plant view: absorption chillers, electric chillers, storage tank and campus buildings"></svg>
     <p class="scrub-title"><span id="scrub-label">Time scrubber: tonight 22:00 &rarr; tomorrow 21:00</span> <span class="sim-tag">SIMULATED</span></p>
     <div class="controls">
@@ -195,5 +207,6 @@
 <script src="decisions.js"></script>
 <script src="explain.js"></script>
 <script src="app.js"></script>
+<script type="module" src="plant3d.js"></script>
 </body>
 </html>

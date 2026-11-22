@@ -61,7 +61,7 @@ def server():
 @pytest.fixture(scope="session")
 def browser():
     with playwright_sync.sync_playwright() as pw:
-        b = pw.chromium.launch()
+        b = pw.chromium.launch(args=["--use-angle=swiftshader", "--enable-unsafe-swiftshader"])
         yield b
         b.close()
 
@@ -165,7 +165,7 @@ def test_sketch_wording(page, server):
     assert "Run " in page.inner_text("#chiller-plan")
     assert " electric chillers from " in page.inner_text("#chiller-plan")
     assert page.inner_text("#clock").endswith("tomorrow")
-    assert page.inner_text("#t-plant").startswith("3D plant view · 12:00 tomorrow")
+    assert page.inner_text("#t-plant").startswith("Plant view · 12:00 tomorrow")
     assert page.inner_text("#comparison tbody tr:last-child td:first-child") == "AI forecast"
     assert "The advisor only suggests the charge amount." in page.inner_text("body")
     assert "Tomorrow is a" in page.inner_text("body")
@@ -452,3 +452,122 @@ def test_explainer_error_path_and_retry(page, server):
     page.wait_for_selector(f'#explain-date:text-is("{date_b}")')
     assert page.is_visible("#explain-body")
     assert errors == []
+
+
+# ---------- 3D plant view ----------
+
+
+def _open_3d(page, server):
+    errors = []
+    page.on("pageerror", lambda e: errors.append(str(e)))
+    page.on("console", lambda m: errors.append(m.text) if m.type == "error" else None)
+    _ready(page, server)
+    assert page.is_visible("#plant-svg") and page.is_hidden("#plant-3d")
+    page.click("#view-3d")
+    page.wait_for_function("window.__plant3d && window.__plant3d.ready")
+    return errors
+
+
+def _hourly(page):
+    return page.evaluate("window.SCA.getData().hourly")
+
+
+def test_3d_toggle_and_sync(page, server):
+    errors = _open_3d(page, server)
+    assert page.is_visible("#plant-3d") and page.is_hidden("#plant-svg")
+    hourly = _hourly(page)
+    page.evaluate("window.SCA.setHour(4)")
+    st = page.evaluate("window.__plant3d")
+    assert st["idx"] == 4
+    assert hourly[4]["charge_rt"] > 0
+    assert st["flows"]["ec_tank"] == hourly[4]["charge_rt"]
+    assert st["flows"]["tank_campus"] == 0
+    cap = page.evaluate("window.SCA.getData().plant.tank_capacity_rth")
+    assert abs(st["waterFraction"] - hourly[4]["tank_level_rth"] / cap) < 1e-6
+    page.evaluate("window.SCA.setHour(15)")
+    st = page.evaluate("window.__plant3d")
+    assert st["flows"]["tank_campus"] == hourly[15]["tank_out_rt"]
+    assert st["flows"]["ec_tank"] == 0
+    assert st["flows"]["return"] == hourly[15]["campus_load_rt"]
+    page.click("#view-2d")
+    assert page.is_visible("#plant-svg") and page.is_hidden("#plant-3d")
+    assert errors == []
+
+
+def test_3d_labels_from_api(page, server):
+    errors = _open_3d(page, server)
+    hourly = _hourly(page)
+    for i in (4, 15):
+        page.evaluate(f"window.SCA.setHour({i})")
+        lab = page.evaluate("window.__plant3d.labels")
+        assert lab["academic"] == hourly[i]["academic_rt"]
+        assert lab["evening"] == hourly[i]["evening_rt"]
+        assert lab["base"] == hourly[i]["base_rt"]
+    txt = page.inner_text("#plant-3d")
+    for name in ("Academic", "Library & evening classes", "Data centre & labs"):
+        assert name in txt
+    assert "room-equivalents (SIMULATED)" in txt
+    assert errors == []
+
+
+def test_3d_orbit_and_reset(page, server):
+    errors = _open_3d(page, server)
+    page.wait_for_timeout(300)
+    start = page.evaluate("window.__plant3d.camera")
+    box = page.locator("#plant-3d canvas").bounding_box()
+    cx, cy = box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
+    page.mouse.move(cx, cy)
+    page.mouse.down()
+    page.mouse.move(cx + 120, cy + 30, steps=8)
+    page.mouse.up()
+    page.wait_for_timeout(200)
+    moved = page.evaluate("window.__plant3d.camera")
+    assert max(abs(a - b) for a, b in zip(start, moved)) > 0.1
+    page.click("#reset-view")
+    page.wait_for_timeout(200)
+    back = page.evaluate("window.__plant3d.camera")
+    assert max(abs(a - b) for a, b in zip(start, back)) < 1e-6
+    assert errors == []
+
+
+def test_3d_tooltip_on_hover(page, server):
+    errors = _open_3d(page, server)
+    page.evaluate("window.SCA.setHour(15)")
+    found = page.evaluate("window.__plant3d.hoverProbe && window.__plant3d.hoverProbe('tank')")
+    assert found
+    assert "RTh" in page.inner_text("#plant-tooltip")
+    assert errors == []
+
+
+def test_3d_loop_stops_when_hidden(page, server):
+    _open_3d(page, server)
+    assert page.evaluate("window.__plant3d.rendering") is True
+    page.click("#view-2d")
+    page.wait_for_timeout(200)
+    assert page.evaluate("window.__plant3d.rendering") is False
+
+
+def test_no_webgl_fallback(browser, server):
+    ctx = browser.new_context(viewport={"width": 1440, "height": 900})
+    ctx.add_init_script(
+        """
+        const g = HTMLCanvasElement.prototype.getContext;
+        HTMLCanvasElement.prototype.getContext = function (t, ...a) {
+          if (t === 'webgl' || t === 'webgl2' || t === 'experimental-webgl') return null;
+          return g.call(this, t, ...a);
+        };
+        """
+    )
+    pg = ctx.new_page()
+    errors = []
+    pg.on("pageerror", lambda e: errors.append(str(e)))
+    pg.on("console", lambda m: errors.append(m.text) if m.type == "error" else None)
+    _ready(pg, server)
+    pg.wait_for_selector("#view-3d:disabled")
+    assert "WebGL" in pg.inner_text("#view-note")
+    assert pg.is_visible("#view-note")
+    assert pg.is_visible("#plant-svg")
+    pg.evaluate("window.SCA.setHour(4)")
+    assert "Plant view" in pg.inner_text("#t-plant")
+    assert errors == []
+    ctx.close()

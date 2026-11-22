@@ -205,7 +205,7 @@
     $("scrubber").value = idx;
     const when = `${h.hour} ${idx < 2 ? "tonight" : "tomorrow"}`;
     $("clock").textContent = when;
-    $("t-plant").textContent = `3D plant view · ${when}`;
+    $("t-plant").textContent = `Plant view · ${when}`;
     const night = idx < 10; // 22:00-07:00
     let cap;
     if (h.charge_rt > 0) cap = "Night: charging the tank";

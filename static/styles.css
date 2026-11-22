@@ -109,3 +109,19 @@ svg text { font-family: inherit; }
 #explain-path li { margin-bottom: 6px; }
 #explain-path li span { display: block; color: var(--muted); font-size: 13px; }
 @media (max-width: 1100px) { .explain-two { grid-template-columns: 1fr; } }
+
+/* 3D plant view */
+.plant-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.plant-head h2 { margin: 0; }
+.view-toggle { display: inline-flex; border: 1px solid #4A5A74; border-radius: 8px; overflow: hidden; }
+.view-toggle button { background: transparent; color: #E8EDF4; border: 0; padding: 4px 14px; font: inherit; cursor: pointer; }
+.view-toggle button.on { background: #0E8A83; color: #fff; }
+.view-toggle button:disabled { opacity: 0.45; cursor: not-allowed; }
+.view-toggle button:focus-visible { outline: 2px solid #5CC8C0; outline-offset: -2px; }
+.plant-3d { position: relative; width: 100%; aspect-ratio: 640 / 400; background: #0B1424; border-radius: 8px; overflow: hidden; touch-action: none; }
+.plant-3d canvas { display: block; width: 100%; height: 100%; }
+.plant-3d #reset-view { position: absolute; top: 8px; right: 8px; z-index: 3; padding: 4px 10px; }
+.plant3d-label { position: absolute; left: 0; top: 0; z-index: 2; pointer-events: none; color: #fff; font-size: 12px; line-height: 1.25; text-align: center; background: rgba(15, 27, 45, 0.78); padding: 2px 6px; border-radius: 4px; white-space: nowrap; transform: translate(-50%, -100%); }
+.plant3d-label small { display: block; color: #F3D98B; font-size: 11px; }
+.plant-tooltip { position: absolute; z-index: 4; pointer-events: none; background: #fff; color: #1B2430; font-size: 12px; padding: 4px 8px; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,.4); }
+#plant-svg[hidden], .plant-3d[hidden], .plant-tooltip[hidden] { display: none; }
