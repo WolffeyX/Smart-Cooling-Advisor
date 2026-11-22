@@ -195,12 +195,12 @@ playwright install chromium   # optional</pre></li>
 </div>
 
 <h3>Step 3. Plant view, 3D</h3>
-<p>Press <strong>3D</strong> in the card header. It needs WebGL; without it the button is disabled and 2D keeps working. The scene uses the same hour as the scrubber, Play and the charts. Drag to orbit, scroll to zoom and press <strong>Reset view</strong> to return. Hover a part to see its name and live value. The campus is three blocks (Academic, Library and evening, Data centre and labs), each labelled with its load. This block split is an ASSUMPTION. Blue pipes carry chilled supply and orange pipes carry return. Each building's feed pipe moves at that building's own load. The orange return runs from all three blocks back to the chillers, both the absorption chillers and the electric chillers. Moving dots show water flowing this hour. A dim pipe is idle this hour, as the key in the corner of the view says.</p>
-<figure style="max-width:78%">
+<p>Press <strong>3D</strong> in the card header. It needs WebGL; without it the button is disabled and 2D keeps working. The scene uses the same hour as the scrubber, Play and the charts. Drag to orbit, scroll to zoom and press <strong>Reset view</strong> to return. Hover a part to see its name and live value. The campus is three blocks (Academic, Library and evening, Data centre and labs), each labelled with its load. This block split is an ASSUMPTION. Blue pipes carry chilled supply and orange pipes carry return. Each building's feed pipe moves at that building's own load. The orange return runs from all three blocks back to the chillers, both the absorption chillers and the electric chillers. Each return branch follows its own flow, so the electric-chiller return is dim while no electric chiller runs. Moving dots show water flowing this hour. A dim pipe is idle this hour, as the key in the corner of the view says.</p>
+<figure style="max-width:70%">
   <img src="img/g_3d_night.png" alt="3D plant view at 02:00 while the tank charges">
   <figcaption>02:00: electric chillers charge the tank. Hover a part for its live value.</figcaption>
 </figure>
-<figure style="max-width:78%">
+<figure style="max-width:70%">
   <img class="plantcrop" src="img/g_3d_day.png" alt="3D plant view at 13:00 while the tank discharges to the campus">
   <figcaption>13:00: the tank and absorption chillers supply the campus.</figcaption>
 </figure>
@@ -230,7 +230,7 @@ playwright install chromium   # optional</pre></li>
       <dt>less / more</dt><dd>"Less" means the AI used less electric-chiller energy than that baseline. "More" means it used more. The AI can do worse on a single day. On 23 Oct 2024 the weekday/weekend rule used less, so the card says "more".</dd>
       <dt>CO₂ figure</dt><dd>The kWh difference times 0.740 kg CO₂/kWh. It reads less or more together with the kWh. The factor is the Energy Commission (Suruhanjaya Tenaga) Grid Emission Factor, Peninsular Malaysia 2024 (provisional). It covers electricity only. It is an ASSUMPTION.</dd>
     </dl>
-    <p class="note">One day overstates the saving. Cold left in the tank at 21:00 counts as spent, so a single day flatters the AI. Over Oct to Dec the AI saves about 9 % against always filling. The impact block always describes the AI recommendation, even when you preview your own number.</p>
+    <p class="note">Cold left in the tank at 21:00 counts as spent, so a single day favours the plan that leaves less behind. The card shows each plan's 21:00 level. Over Oct to Dec the AI uses about 9 % less than always filling. The impact block always describes the AI recommendation, even when you preview your own number.</p>
     <p>Then decide:</p>
     <ul>
       <li><strong>Approve plan</strong> accepts the AI target. One click writes one row to the decision log.</li>
@@ -279,10 +279,10 @@ playwright install chromium   # optional</pre></li>
 <figure>
   <img src="img/g_rf_importance.png" alt="Part 2 of the explainer: bar chart of permutation importance for each input">
 </figure>
-<figure style="max-width:78%">
+<figure style="max-width:70%">
   <img src="img/g_rf_trees.png" alt="Part 3 of the explainer: histogram of the 400 trees' forecasts with the mean marked">
 </figure>
-<figure style="max-width:78%">
+<figure style="max-width:70%">
   <img src="img/g_rf_path.png" alt="Parts 4 and 5 of the explainer: one tree's first five questions and the training paragraph">
 </figure>
 <p><strong>Reading part 2.</strong> The chart shows permutation importance: how much held-out error rises when an input is shuffled. Month always shows 0 by design: each model is tested only on months it never trained on, and shuffling month among those test days does not move any day across a month split. It does not mean month is unimportant. <strong>4. One tree's path.</strong> The first five questions one tree asked about this day, such as whether the day of the week is at or below a threshold. <strong>5. Training and accuracy.</strong> The forest has 400 trees and at least 3 days per leaf. It trains on January to September and is tested on October to December, which it never sees in training. On that test its mean absolute error is about 405 RTh, against about 967 RTh for the weekday/weekend rule.</p>
