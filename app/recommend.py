@@ -45,6 +45,16 @@ def impact_line(baseline_kwh: float, ai_kwh: float) -> dict:
     }
 
 
+def impact_note(levels_21: dict[str, float]) -> str:
+    """Neutral one-day caveat built from the per-strategy 21:00 tank levels."""
+    full, rule, ai = (f"{round(levels_21[k]):,}" for k in ("always_full", "calendar_rule", "ai_forecast"))
+    return (
+        "Single day (SIMULATED): cold left in the tank at 21:00 counts as spent, which favours "
+        f"the plan that leaves less (always fill {full} RTh, rule {rule} RTh, AI {ai} RTh left). "
+        "Over Oct–Dec the year-long simulation gives the AI about −9 % vs always filling."
+    )
+
+
 def _num(x: float, round_values: bool) -> float:
     return round(float(x), 1) if round_values else float(x)
 
@@ -185,6 +195,9 @@ def build_response(bank: DayBank, req: dict, base_params: dict, round_values: bo
     impact = {
         "vs_always_full": impact_line(round(e_full, 1), e_ai),
         "vs_calendar_rule": impact_line(round(sums["calendar_rule"]["ec_energy_kwh"], 1), e_ai),
+        "note": impact_note(
+            {name: runs[name]["tank_level_rth"][-1] for name in runs}
+        ),
         "grid_kg_per_kwh": GRID_EMISSION_KG_PER_KWH,
         "grid_source": GRID_EMISSION_SOURCE,
         "label": "SIMULATED",
@@ -241,6 +254,8 @@ def build_response(bank: DayBank, req: dict, base_params: dict, round_values: bo
                 row[k] = n(getattr(sc, k)[i])
             else:
                 row[k] = int(hourly_run[k][i]) if k in _HOURLY_INT else n(hourly_run[k][i])
+        # electric-chiller output that hour: serves campus plus charges the tank
+        row["ec_out_rt"] = n(hourly_run["ec_load_rt"][i] + hourly_run["charge_rt"][i])
         hourly.append(row)
 
     preset = os.environ.get("SCA_PARAMS_PRESET", "default")

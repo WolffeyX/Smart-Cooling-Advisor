@@ -35,7 +35,7 @@ DAY_HOUR = 15  # 13:00 (daytime discharge)
 
 
 def wait_ready(proc):
-    deadline = time.time() + 120
+    deadline = time.time() + 180
     while time.time() < deadline:
         try:
             urllib.request.urlopen(f"{BASE}/health", timeout=2)

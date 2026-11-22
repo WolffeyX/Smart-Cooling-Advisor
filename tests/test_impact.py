@@ -50,3 +50,34 @@ def test_pct_none_when_baseline_zero():
 def test_grid_constants():
     assert config.GRID_EMISSION_KG_PER_KWH == 0.740
     assert "Peninsular Malaysia 2024" in config.GRID_EMISSION_SOURCE
+
+
+def test_ec_out_rt_is_load_plus_charge(client):
+    j = client.post("/recommend", json=BODY).json()
+    for r in j["hourly"]:
+        assert r["ec_out_rt"] == pytest.approx(r["ec_load_rt"] + r["charge_rt"], abs=0.1)
+        if r["ec_count"] == 0:
+            assert r["ec_out_rt"] == 0
+    assert any(r["ec_out_rt"] > 0 for r in j["hourly"])
+
+
+def _levels(j):
+    return {c["strategy"]: round(c["tank_level_21_rth"]) for c in j["comparison"]}
+
+
+@pytest.mark.parametrize("temp", [31, 33.2])
+def test_impact_note_has_21h_levels(client, temp):
+    j = client.post("/recommend", json={"day_type": "weekday", "forecast_max_temp_c": temp}).json()
+    note = j["impact"]["note"]
+    lv = _levels(j)
+    assert "SIMULATED" in note
+    for k in ("always_full", "calendar_rule", "ai_forecast"):
+        assert f"{lv[k]:,}" in note
+    assert "overstates" not in note
+    assert "flatters the AI" not in note
+
+
+def test_impact_note_neutral_on_oct23(client):
+    j = client.post("/recommend", json={"day_type": "weekday", "forecast_max_temp_c": 33.2}).json()
+    assert j["scenario"]["source_date"] == "2024-10-23"
+    assert "favours the plan that leaves less" in j["impact"]["note"]

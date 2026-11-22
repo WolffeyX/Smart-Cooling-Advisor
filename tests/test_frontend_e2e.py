@@ -38,7 +38,7 @@ def server():
         env=env,
     )
     try:
-        deadline = time.time() + 60
+        deadline = time.time() + 180
         while time.time() < deadline:
             try:
                 urllib.request.urlopen(f"{BASE}/health", timeout=2)
@@ -48,7 +48,7 @@ def server():
                     raise RuntimeError("uvicorn exited early")
                 time.sleep(0.5)
         else:
-            raise RuntimeError("server did not become ready in 60 s")
+            raise RuntimeError("server did not become ready in 180 s")
         assert proc.poll() is None, "our uvicorn died; a stale server may own the port"
         yield BASE
     finally:

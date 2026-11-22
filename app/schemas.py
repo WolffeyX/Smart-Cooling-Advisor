@@ -83,6 +83,7 @@ class HourRow(BaseModel):
     academic_rt: float
     evening_rt: float
     base_rt: float
+    ec_out_rt: float
 
 
 class ComparisonRow(BaseModel):
@@ -126,6 +127,7 @@ class ImpactLine(BaseModel):
 class Impact(BaseModel):
     vs_always_full: ImpactLine
     vs_calendar_rule: ImpactLine
+    note: str
     grid_kg_per_kwh: float
     grid_source: str
     label: Literal["SIMULATED"]
