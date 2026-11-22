@@ -23,8 +23,8 @@ SCENARIOS = [
 ]
 
 # 3D camera positions (world units). HOME is [28, 20, 30] in static/plant3d-scene.js.
-NIGHT_CAMERA = [-34, 26, 26]  # 02:00 charging: front-left, high
-DAY_CAMERA = [40, 9, 4]  # 13:00 discharging: right side, lower
+NIGHT_CAMERA = [-26, 46, 22]  # 02:00 charging: front-left, high (labels all readable)
+DAY_CAMERA = [30, 6, 34]  # 13:00 discharging: front-right, low (labels do not overlap)
 NIGHT_HOUR = 4  # 02:00 (charging)
 DAY_HOUR = 15  # 13:00 (daytime discharge)
 
