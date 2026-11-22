@@ -663,3 +663,40 @@ def test_no_webgl_fallback(browser, server):
     assert "Plant view" in pg.inner_text("#t-plant")
     assert errors == []
     ctx.close()
+
+
+def _impact_line(line, base):
+    kwh = f"{abs(line['kwh_saved']):,.1f}"
+    word = "more" if line["kwh_saved"] < 0 else "less"
+    return kwh, word
+
+
+def test_impact_card(page, server):
+    _ready(page, server)
+    api = page.request.post(f"{server}/recommend", data=BASE_BODY).json()
+    page.wait_for_selector("#impact-full:not(:empty)")
+    full = page.inner_text("#impact-full").replace("\u00a0", " ")
+    kwh, word = _impact_line(api["impact"]["vs_always_full"], "full")
+    assert f"{kwh} kWh {word}" in full
+    assert "CO₂" in full
+    assert "0.740" in page.inner_text("#impact-factor")
+    assert "ASSUMPTION" in page.inner_text("#impact-factor")
+    assert page.is_visible("#impact-caveat")
+    assert "SIMULATED" in page.inner_text("#impact")
+
+
+def test_impact_card_negative_says_more(page, server):
+    page.goto(server)
+    page.wait_for_selector("#hero-target:not(:empty)")
+    body = {**BASE_BODY, "forecast_max_temp_c": 33}
+    api = page.request.post(f"{server}/recommend", data=body).json()
+    assert api["impact"]["vs_calendar_rule"]["kwh_saved"] < 0
+    with page.expect_response("**/recommend"):
+        page.fill("#temp", "33")
+    page.wait_for_function("document.getElementById('scenario-date').dataset.date === '2024-10-23'")
+    rule = page.inner_text("#impact-rule").replace("\u00a0", " ")
+    kwh, _ = _impact_line(api["impact"]["vs_calendar_rule"], "rule")
+    assert f"{kwh} kWh more" in rule
+    assert "kg CO₂ more" in rule
+    assert "−" not in rule
+    assert "NaN" not in page.inner_text("#impact")

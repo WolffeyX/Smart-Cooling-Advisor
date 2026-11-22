@@ -2,7 +2,12 @@
 
 import os
 
-from app.config import MULTIPLIER_LABEL, PRESET_LABELS
+from app.config import (
+    GRID_EMISSION_KG_PER_KWH,
+    GRID_EMISSION_SOURCE,
+    MULTIPLIER_LABEL,
+    PRESET_LABELS,
+)
 from app.plant import HOUR_LABELS, HOURS, dispatch_day, summarise_day
 from app.scenario import DayBank, build_scenario
 
@@ -28,6 +33,16 @@ def vs_always_full_pct(e: float, e_full: float) -> float | None:
     if e_full == 0:
         return None
     return round(100 * (e / e_full - 1), 1)
+
+
+def impact_line(baseline_kwh: float, ai_kwh: float) -> dict:
+    """Energy and CO2 saved by the AI against one baseline (negative = AI used more)."""
+    saved = baseline_kwh - ai_kwh
+    return {
+        "kwh_saved": round(saved, 1),
+        "pct_saved": None if baseline_kwh == 0 else round(100 * saved / baseline_kwh, 1),
+        "co2_kg_saved": round(saved * GRID_EMISSION_KG_PER_KWH, 1),
+    }
 
 
 def _num(x: float, round_values: bool) -> float:
@@ -165,6 +180,16 @@ def build_response(bank: DayBank, req: dict, base_params: dict, round_values: bo
             }
         )
 
+    # same 1 dp numbers as the comparison rows; always about the AI plan, never the override
+    e_ai = round(sums["ai_forecast"]["ec_energy_kwh"], 1)
+    impact = {
+        "vs_always_full": impact_line(round(e_full, 1), e_ai),
+        "vs_calendar_rule": impact_line(round(sums["calendar_rule"]["ec_energy_kwh"], 1), e_ai),
+        "grid_kg_per_kwh": GRID_EMISSION_KG_PER_KWH,
+        "grid_source": GRID_EMISSION_SOURCE,
+        "label": "SIMULATED",
+    }
+
     ai_run, ai_sum = runs["ai_forecast"], sums["ai_forecast"]
     capped = bool(ai_used * (1 + mg) > cap)
     shortfall = ai_sum["shortfall_rth"]
@@ -266,4 +291,5 @@ def build_response(bank: DayBank, req: dict, base_params: dict, round_values: bo
             sc, preset, {k: float(r["tank_level_rth"][-1]) for k, r in runs.items()}
         ),
         "operator_plan": operator_plan,
+        "impact": impact,
     }

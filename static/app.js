@@ -140,6 +140,8 @@
     }
     note.appendChild(document.createTextNode(r.message));
 
+    renderImpact();
+
     const p = data.plant;
     $("plant-text").textContent =
       `Fixed plant: 2 × 1,250 RT absorption chillers (≈${fmt(p.sac_available_rt)} RT ` +
@@ -158,6 +160,28 @@
     renderOperator();
     renderTime();
     document.dispatchEvent(new CustomEvent("sca:data", { detail: data }));
+  }
+
+  function impactText(prefix, line) {
+    const less = line.kwh_saved >= 0;
+    const pct = line.pct_saved === null ? "" : ` (${fmt(Math.abs(line.pct_saved), nf1)} %)`;
+    const dir = less ? "less" : "more";
+    return (
+      `${prefix}: ${fmt(Math.abs(line.kwh_saved), nf1)} kWh ${dir} electric-chiller energy${pct}` +
+      ` · ≈ ${fmt(Math.abs(line.co2_kg_saved), nf1)} kg CO₂ ${dir}`
+    );
+  }
+
+  function renderImpact() {
+    const im = data.impact;
+    $("impact-full").textContent = impactText("vs always filling the tank", im.vs_always_full);
+    $("impact-rule").textContent = impactText("vs weekday/weekend rule", im.vs_calendar_rule);
+    $("impact-factor").textContent =
+      `Grid factor ${im.grid_kg_per_kwh.toFixed(3)} kg CO₂/kWh, ${im.grid_source} · ` +
+      "electricity only · ASSUMPTION";
+    $("impact-caveat").textContent =
+      "One day overstates the saving: cold left in the tank at 21:00 counts as spent. " +
+      "Over Oct–Dec the AI saves about 9 % against always filling (SIMULATED).";
   }
 
   function renderOperator() {

@@ -71,3 +71,11 @@ def get_params(preset: str | None = None) -> dict:
     if preset not in PRESETS:
         raise ValueError(f"unknown params preset: {preset!r}")
     return copy.deepcopy(PRESETS[preset])
+
+
+# ASSUMPTION: grid emission factor used for the CO2 figures (electricity only).
+GRID_EMISSION_KG_PER_KWH = 0.740
+GRID_EMISSION_SOURCE = (
+    "Energy Commission (Suruhanjaya Tenaga), Grid Emission Factor, "
+    "Peninsular Malaysia 2024 (provisional)"
+)

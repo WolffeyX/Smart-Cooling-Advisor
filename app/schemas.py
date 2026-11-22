@@ -117,6 +117,20 @@ class OperatorPlan(BaseModel):
     message: str
 
 
+class ImpactLine(BaseModel):
+    kwh_saved: float
+    pct_saved: float | None
+    co2_kg_saved: float
+
+
+class Impact(BaseModel):
+    vs_always_full: ImpactLine
+    vs_calendar_rule: ImpactLine
+    grid_kg_per_kwh: float
+    grid_source: str
+    label: Literal["SIMULATED"]
+
+
 class RecommendResponse(BaseModel):
     label: Literal["SIMULATED"]
     scenario: Scenario
@@ -126,6 +140,7 @@ class RecommendResponse(BaseModel):
     plant: Plant
     assumptions: list[str]
     operator_plan: OperatorPlan | None = None
+    impact: Impact
 
 
 class HealthResponse(BaseModel):

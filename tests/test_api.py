@@ -74,7 +74,7 @@ def _check_finite(node, path):
         for i, v in enumerate(node):
             _check_finite(v, f"{path}[{i}]")
     elif node is None:
-        assert path.endswith((".vs_always_full_pct", ".operator_plan")), (
+        assert path.endswith((".vs_always_full_pct", ".operator_plan", ".pct_saved")), (
             f"unexpected None at {path}"
         )
     elif isinstance(node, (int, float)) and not isinstance(node, bool):
