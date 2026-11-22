@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 
 from app.config import DATA_DIR, DAY_TYPE_MULTIPLIERS
+from app.explain import compute_explain_stats
 from app.legacy import step5_plant
 from app.model import (
     DailyForecasts,
@@ -29,6 +30,8 @@ class DayBank:
     daily: pd.DataFrame
     forecasts: DailyForecasts
     params: dict
+    features: pd.DataFrame
+    explain_stats: dict
 
 
 def build_day_bank(params: dict, cache_dir: Path = DATA_DIR) -> DayBank:
@@ -38,7 +41,16 @@ def build_day_bank(params: dict, cache_dir: Path = DATA_DIR) -> DayBank:
     daily = step5_plant.daily_table(weather, total, params)
     X = build_features(daily, weather, total)
     forecasts = train_forecasters(daily, X)
-    return DayBank(weather=weather, load=load, daily=daily, forecasts=forecasts, params=params)
+    stats = compute_explain_stats(daily, X, forecasts, weather)
+    return DayBank(
+        weather=weather,
+        load=load,
+        daily=daily,
+        forecasts=forecasts,
+        params=params,
+        features=X,
+        explain_stats=stats,
+    )
 
 
 def select_day(bank: DayBank, day_type: str, tmax_c: float) -> pd.Timestamp:

@@ -5,12 +5,13 @@ from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from app.config import DATA_DIR, ROOT_DIR, get_params
 from app.decisions import COLUMNS, DecisionLog, decision_row
+from app.explain import explain_day
 from app.recommend import build_response
 from app.scenario import build_day_bank
 from app.schemas import DecisionRequest, HealthResponse, RecommendRequest, RecommendResponse
@@ -66,6 +67,23 @@ def get_decisions_csv(request: Request):
         media_type="text/csv",
         headers={"Content-Disposition": 'attachment; filename="decision_log.csv"'},
     )
+
+
+@app.get("/explain")
+def explain(request: Request, source_date: str = Query(pattern=r"^\d{4}-\d{2}-\d{2}$")):
+    try:
+        datetime.strptime(source_date, "%Y-%m-%d")
+    except ValueError:
+        raise HTTPException(status_code=422, detail="source_date is not a valid calendar date")
+    bank = request.app.state.bank
+    try:
+        return explain_day(bank, source_date)
+    except KeyError:
+        eligible = bank.forecasts.eligible
+        lo, hi = eligible.min().strftime("%Y-%m-%d"), eligible.max().strftime("%Y-%m-%d")
+        raise HTTPException(
+            status_code=404, detail=f"no forecast for that day (eligible: {lo} to {hi})"
+        )
 
 
 app.mount("/", StaticFiles(directory=ROOT_DIR / "static", html=True), name="static")

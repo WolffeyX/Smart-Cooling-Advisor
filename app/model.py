@@ -3,7 +3,7 @@
 import hashlib
 import json
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import numpy as np
@@ -146,6 +146,9 @@ class DailyForecasts:
     calendar: pd.Series
     training_months: dict
     eligible: pd.DatetimeIndex
+    models: dict = field(default_factory=dict)  # 'oct_dec', 'm1'..'m9' -> fitted forest
+    model_key_by_day: dict = field(default_factory=dict)  # day -> key of its model
+    calendar_by_model: dict = field(default_factory=dict)  # key -> dow -> mean need
 
 
 def _rf() -> RandomForestRegressor:
@@ -163,19 +166,31 @@ def train_forecasters(g: pd.DataFrame, X: pd.DataFrame) -> DailyForecasts:
     ai = pd.Series(np.nan, index=g.index)
     calendar = pd.Series(np.nan, index=g.index)
     training_months: dict = {}
+    models: dict = {}
+    model_key_by_day: dict = {}
+    calendar_by_model: dict = {}
 
-    def fit_predict(train_months: list[int], target_mask: pd.Series) -> None:
+    def fit_predict(key: str, train_months: list[int], target_mask: pd.Series) -> None:
         train = ok & month.isin(train_months)
         m = _rf().fit(X[train], g.loc[train, "need_rth"])
+        models[key] = m
         ai[target_mask] = m.predict(X[target_mask])
         cal = g[train].groupby("dow")["need_rth"].mean()
+        calendar_by_model[key] = cal
         calendar[target_mask] = g.loc[target_mask, "dow"].map(cal)
         for day in g.index[target_mask]:
             training_months[day] = list(train_months)
+            model_key_by_day[day] = key
 
-    fit_predict(TRAINING_MONTHS_OCT_DEC, ok & (month >= 10))
+    fit_predict("oct_dec", TRAINING_MONTHS_OCT_DEC, ok & (month >= 10))
     for m in range(1, 10):
-        fit_predict([k for k in range(1, 10) if k != m], ok & (month == m))
+        fit_predict(f"m{m}", [k for k in range(1, 10) if k != m], ok & (month == m))
     return DailyForecasts(
-        ai=ai, calendar=calendar, training_months=training_months, eligible=g.index[ok]
+        ai=ai,
+        calendar=calendar,
+        training_months=training_months,
+        eligible=g.index[ok],
+        models=models,
+        model_key_by_day=model_key_by_day,
+        calendar_by_model=calendar_by_model,
     )
