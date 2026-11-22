@@ -106,3 +106,22 @@ def dispatch_year(weather, load_rt, target_by_date, params, start_level=5000.0, 
         out["soc"][i] = level
         out["charge_rt"][i] = row["charge_rt"]
     return pd.DataFrame(out, index=weather.index)
+
+
+def summarise_day(r: dict) -> dict:
+    """Headline numbers of one dispatch_day result."""
+    charging = np.flatnonzero(np.asarray(r["charge_rt"]) > 1e-9)
+    if len(charging):
+        chillers = {
+            "count": int(np.max(np.asarray(r["ec_count"])[charging])),
+            "start": "22:00",
+            "end": HOUR_LABELS[(int(charging[-1]) + 1) % len(HOUR_LABELS)],
+        }
+    else:
+        chillers = {"count": 0, "start": "—", "end": "—"}
+    return {
+        "ec_energy_kwh": float(np.sum(r["ec_kw"])),
+        "daytime_ec_hours": int(np.sum(np.asarray(r["ec_load_rt"])[10:24] > 1e-9)),
+        "shortfall_rth": float(np.sum(r["unmet_rt"])),
+        "chillers": chillers,
+    }
