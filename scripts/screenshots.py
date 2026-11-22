@@ -1,4 +1,7 @@
-"""Start the app on port 8765 and capture the README and user-guide screenshots."""
+"""Start the app on port 8765 and capture the README and user-guide screenshots.
+
+Run with the argument `guide` to capture only the per-panel guide crops (docs/guide/img).
+"""
 
 import os
 import subprocess
@@ -12,6 +15,7 @@ from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "docs" / "screenshots"
+GUIDE_OUT = ROOT / "docs" / "guide" / "img"
 PORT = 8765
 BASE = f"http://127.0.0.1:{PORT}"
 LAUNCH_ARGS = ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"]
@@ -125,6 +129,31 @@ def shoot_decision_log(browser, log_path):
     ctx.close()
 
 
+def shoot_guide(browser):
+    """Per-panel crops for the user guide (docs/guide/img), default scenario unless noted."""
+    GUIDE_OUT.mkdir(parents=True, exist_ok=True)
+    ctx = browser.new_context(viewport={"width": 1440, "height": 900}, device_scale_factor=2)
+    page = ctx.new_page()
+    page.goto(BASE)
+    page.wait_for_selector("#hero-target:not(:empty)")
+    page.wait_for_selector("#explain-path li")
+    page.wait_for_timeout(500)
+    page.screenshot(path=str(GUIDE_OUT / "g_overview.png"))
+    page.locator("section.card:has(#day-type)").screenshot(path=str(GUIDE_OUT / "g_controls.png"))
+    page.locator("section.plant-card").screenshot(path=str(GUIDE_OUT / "g_plant2d.png"))
+    page.locator("section.reco").screenshot(path=str(GUIDE_OUT / "g_reco.png"))
+    page.locator("section.charts").screenshot(path=str(GUIDE_OUT / "g_charts.png"))
+    page.locator("section.card:has(#comparison)").screenshot(path=str(GUIDE_OUT / "g_table.png"))
+    page.click("#adjust")
+    page.fill("#override-input", "9000")
+    with page.expect_response(lambda r: r.url.endswith("/recommend")):
+        page.click("#override-preview")
+    page.wait_for_timeout(500)
+    page.locator("section.reco").screenshot(path=str(GUIDE_OUT / "g_adjust.png"))
+    ctx.close()
+    print("guide shots written")
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     log_dir = tempfile.mkdtemp(prefix="sca-shots-")
@@ -141,6 +170,10 @@ def main():
         wait_ready(proc)
         with sync_playwright() as pw:
             browser = pw.chromium.launch(args=LAUNCH_ARGS)
+            if "guide" in sys.argv[1:]:
+                shoot_guide(browser)
+                browser.close()
+                return
             for name, day_type, temp in SCENARIOS:
                 shoot(browser, name, day_type, temp)
             shoot_plant(browser, "3d_night", NIGHT_HOUR, NIGHT_CAMERA)

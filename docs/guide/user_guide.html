@@ -1,0 +1,326 @@
+<title>Smart Cooling Advisor Guide</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+@import url("https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&family=Source+Serif+4:wght@600;700&display=swap");
+:root {
+  --bg: #f4f8f9;
+  --surface: #ffffff;
+  --fg: #12262d;
+  --muted: #4a6169;
+  --line: #cddbdf;
+  --accent: #0b6e69;
+  --accent-soft: #dcf0ee;
+  --warn-bg: #fdf0d2;
+  --warn-fg: #6d4a00;
+  --tag-bg: #e3edf1;
+  --font-body: "Source Sans 3", "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+  --font-head: "Source Serif 4", Georgia, "Times New Roman", serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1a1f;
+    --surface: #14262d;
+    --fg: #e3eef1;
+    --muted: #9db4bb;
+    --line: #2b434c;
+    --accent: #4fc4bb;
+    --accent-soft: #123b3b;
+    --warn-bg: #3a2f10;
+    --warn-fg: #f2d58a;
+    --tag-bg: #1d333b;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d1a1f;
+  --surface: #14262d;
+  --fg: #e3eef1;
+  --muted: #9db4bb;
+  --line: #2b434c;
+  --accent: #4fc4bb;
+  --accent-soft: #123b3b;
+  --warn-bg: #3a2f10;
+  --warn-fg: #f2d58a;
+  --tag-bg: #1d333b;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); margin: 0; font-family: var(--font-body); font-size: 16px; line-height: 1.55; }
+.wrap {
+  max-width: 980px; margin: 0 auto; padding-block: 28px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+header.hero { border-bottom: 2px solid var(--accent); padding-bottom: 14px; margin-bottom: 8px; }
+h1, h2, h3 { font-family: var(--font-head); line-height: 1.2; text-wrap: balance; break-after: avoid; }
+h1 { font-size: 2rem; margin: 0 0 6px; }
+h2 { font-size: 1.4rem; margin: 30px 0 8px; color: var(--accent); }
+h3 { font-size: 1.08rem; margin: 18px 0 4px; }
+p, li { max-width: 65ch; }
+p { margin: 0 0 10px; }
+.lede { font-size: 1.08rem; color: var(--muted); }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 0; }
+.tag { background: var(--tag-bg); border: 1px solid var(--line); border-radius: 999px; padding: 1px 10px; font-size: .8rem; font-weight: 600; letter-spacing: .03em; }
+.tag.sim { background: var(--warn-bg); color: var(--warn-fg); border-color: var(--warn-bg); }
+code { font-family: Consolas, "Courier New", monospace; font-size: .92em; background: var(--tag-bg); padding: 0 4px; border-radius: 3px; overflow-wrap: anywhere; }
+pre { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; overflow-x: auto; font-family: Consolas, "Courier New", monospace; font-size: .88rem; margin: 6px 0 12px; break-inside: avoid; }
+figure { margin: 10px 0 14px; break-inside: avoid; min-width: 0; }
+figure img { display: block; max-width: 100%; height: auto; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
+figcaption { font-size: .86rem; color: var(--muted); margin-top: 4px; max-width: 65ch; }
+.split { display: grid; grid-template-columns: minmax(0, 40%) minmax(0, 1fr); gap: 8px 22px; align-items: start; }
+.split > * { min-width: 0; }
+.split.wide { grid-template-columns: minmax(0, 46%) minmax(0, 1fr); }
+.split.narrow { grid-template-columns: minmax(0, 31%) minmax(0, 1fr); }
+.pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; break-inside: avoid; }
+.pair > * { min-width: 0; }
+.crop { overflow: hidden; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
+.crop img { border: 0; border-radius: 0; width: 100%; max-width: none; }
+.crop.top { aspect-ratio: 1.5076; }
+.crop.bottom { aspect-ratio: 1.434; }
+.crop.bottom img { margin-top: -66.33%; }
+.keep, .step { break-inside: avoid; }
+.note { background: var(--accent-soft); border-radius: 6px; padding: 8px 12px; max-width: 65ch; break-inside: avoid; }
+.warn { background: var(--warn-bg); color: var(--warn-fg); border-radius: 6px; padding: 8px 12px; max-width: 65ch; break-inside: avoid; }
+.tablewrap { overflow-x: auto; margin: 8px 0 12px; }
+table { border-collapse: collapse; width: 100%; font-size: .92rem; font-variant-numeric: tabular-nums; break-inside: avoid; }
+th, td { text-align: left; padding: 5px 9px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { background: var(--surface); font-weight: 700; }
+td.num, th.num { text-align: right; }
+ol, ul { padding-left: 1.3em; margin: 4px 0 10px; }
+li { margin-bottom: 3px; }
+dl.terms { margin: 6px 0 12px; }
+dl.terms dt { font-weight: 700; margin-top: 6px; }
+dl.terms dd { margin: 0; max-width: 65ch; }
+footer { margin-top: 28px; color: var(--muted); font-size: .88rem; border-top: 1px solid var(--line); padding-top: 10px; }
+@media (max-width: 640px) {
+  .split, .split.wide, .split.narrow, .pair { grid-template-columns: minmax(0, 1fr); }
+  h1 { font-size: 1.6rem; }
+}
+@page { size: A4; margin: 14mm; }
+@media print {
+  :root, :root:not([data-theme="light"]), :root[data-theme="dark"] {
+    --bg: #ffffff; --surface: #f4f8f9; --fg: #12262d; --muted: #4a6169; --line: #cddbdf;
+    --accent: #0b6e69; --accent-soft: #e3f2f0; --warn-bg: #fdf0d2; --warn-fg: #6d4a00; --tag-bg: #e3edf1;
+    color-scheme: light;
+  }
+  body { font-size: 10pt; line-height: 1.4; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .wrap { max-width: none; padding: 0; }
+  h1 { font-size: 22pt; }
+  h2 { font-size: 14pt; margin-top: 12px; }
+  h3 { font-size: 11.5pt; margin-top: 12px; }
+  figure { margin: 6px 0 10px; }
+  p { margin-bottom: 7px; }
+    .pagebreak { break-before: page; }
+}
+</style>
+
+<div class="wrap">
+<header class="hero">
+  <h1>Smart Cooling Advisor: user guide</h1>
+  <p class="lede">A tank-charging advisor for a university gas district cooling plant. This guide explains what the system represents and how to use every part of the dashboard.</p>
+  <div class="tags">
+    <span class="tag sim">SIMULATED</span><span class="tag">MEASURED</span><span class="tag">ASSUMPTION</span><span class="tag">PROPOSED</span>
+  </div>
+  <p style="margin-top:8px;color:var(--muted);font-size:.9rem">TEB2023 Artificial Intelligence assignment. For the lecturer marking it and for classmates.</p>
+</header>
+
+<section>
+<h2>1. What the system represents</h2>
+<p>Each evening the plant operator decides how much cold to store in the thermal-energy-storage (TES) tank overnight. A full tank covers tomorrow's afternoon peak and lets the absorption chillers carry the rest, so the electric chillers stay off in the daytime. A tank filled too full wastes energy. A tank filled too low forces electric chillers to run at peak hours.</p>
+<p>The advisor forecasts how much cold tomorrow needs, adds a safety margin and proposes a charge target. The operator approves it or types their own number. The advisor is a <strong>PROPOSED</strong> workflow: it suggests, the operator decides.</p>
+<figure style="max-width:80%">
+  <img src="img/g_overview.png" alt="The full dashboard at the top of the page: test controls on the left, the plant view in the middle, tonight's recommendation on the right">
+  <figcaption>The dashboard. Left: test controls. Middle: plant view with a time scrubber. Right: tonight's recommendation.</figcaption>
+</figure>
+<h3>What is real and what is not</h3>
+<p>The campus is a synthetic one of about 1,254 room-equivalents (reference 60 m&sup2; rooms) plus a 350 RT base load, driven by real 2024 Seri Iskandar weather. There is no UTP plant data and no real building data. Four labels appear throughout the app.</p>
+<div class="tablewrap">
+<table>
+  <thead><tr><th>Label</th><th>Meaning</th><th>Examples</th></tr></thead>
+  <tbody>
+    <tr><td><strong>SIMULATED</strong></td><td>Produced by our model and assumptions.</td><td>The campus load, the simulated day-ahead weather forecast, every energy and tank number.</td></tr>
+    <tr><td><strong>MEASURED</strong></td><td>Taken from real data.</td><td>The 2024 weather, and the step-1 classifier accuracy of 78.8 % on October to December.</td></tr>
+    <tr><td><strong>ASSUMPTION</strong></td><td>A value we chose.</td><td>Exam and break multipliers (0.9 and 0.35), the split of load into three blocks by hour, the plant parameters.</td></tr>
+    <tr><td><strong>PROPOSED</strong></td><td>A design for a future plant, not in use.</td><td>The advisor and its approve/adjust workflow.</td></tr>
+  </tbody>
+</table>
+</div>
+</section>
+
+<section>
+<h2>2. Install and run</h2>
+<ol>
+  <li>Open a terminal in the project folder, create a virtual environment and install the packages:
+<pre>python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+playwright install chromium</pre>
+  The last line is only needed for the browser tests and screenshots.</li>
+  <li>Start the app:
+<pre>python -m uvicorn app.main:app</pre></li>
+  <li>Open <code>http://127.0.0.1:8000</code> in a browser. Startup takes about 12 seconds. The first run also builds a cached load file in <code>data/</code>.</li>
+</ol>
+<p>The 3D plant view needs WebGL. If the browser has none, the 3D button is disabled with a note and the 2D view keeps working.</p>
+</section>
+
+<section>
+<h2>3. Walkthrough of the dashboard</h2>
+<p>Work through the panels in this order. Every number on screen comes from the app's API and carries the SIMULATED label.</p>
+
+<h3>Step 1. Test new values</h3>
+<div class="split narrow">
+  <figure>
+    <img src="img/g_controls.png" alt="The Test new values card with a day type selector and five sliders">
+    <figcaption>The "Test new values" card.</figcaption>
+  </figure>
+  <div>
+    <p>These controls describe tomorrow. Each change asks the server for a new plan within a moment.</p>
+    <dl class="terms">
+      <dt>Tomorrow is a&hellip;</dt><dd>Weekday, exam week, semester break or weekend. The app picks the nearest real 2024 day of that type.</dd>
+      <dt>Forecast max temperature</dt><dd>24 to 38 &deg;C. If no day of that type reaches the value, the hottest available day is used.</dd>
+      <dt>AI forecast error</dt><dd>&minus;30 % to +30 %. Use it to ask "what if the forecast is wrong?".</dd>
+      <dt>Safety margin</dt><dd>0 to 60 % added on top of the forecast.</dd>
+      <dt>Tank usable capacity</dt><dd>5,000 to 25,000 RTh.</dd>
+      <dt>Tank level at 22:00</dt><dd>Cold already in the tank when charging starts.</dd>
+    </dl>
+    <p class="note">Changing any control also clears a manual override, so an old number never meets a new capacity.</p>
+  </div>
+</div>
+
+<h3>Step 2. Plant view, 2D</h3>
+<div class="split wide">
+  <figure>
+    <img src="img/g_plant2d.png" alt="The plant view in 2D: absorption chillers, electric chillers, the tank and three campus buildings, with the time scrubber below">
+    <figcaption>Plant view at 12:00 tomorrow, SIMULATED.</figcaption>
+  </figure>
+  <div>
+    <p>The card shows two absorption chillers, four electric chillers, the tank and the campus. Electric chillers turn amber when they run. The tank fills with its level.</p>
+    <ul>
+      <li><strong>Scrubber</strong>: drag it to pick any hour from tonight 22:00 to tomorrow 21:00.</li>
+      <li><strong>Play 24 h</strong> runs the day. <strong>Reset</strong> returns to 12:00 tomorrow.</li>
+      <li>The four tiles under the scrubber give campus load, absorption output, tank flow and electric chillers for the chosen hour.</li>
+    </ul>
+  </div>
+</div>
+
+<h3>Step 3. Plant view, 3D</h3>
+<p>Press <strong>3D</strong> in the card header. The scene uses the same hour as the scrubber, Play and the charts. Drag to orbit, scroll to zoom and press <strong>Reset view</strong> to return. Hover a part to see its name and live value. The campus is drawn as three blocks (Academic, Library and evening, Data centre and labs), each labelled with its load. Blue pipes carry chilled supply and orange pipes carry return. Moving dots show flow, and only where flow is above zero. This block split is an ASSUMPTION.</p>
+<div class="pair">
+  <figure>
+    <img src="img/3d_night.png" alt="3D plant view at 02:00 while the tank charges">
+    <figcaption>02:00: electric chillers charge the tank.</figcaption>
+  </figure>
+  <figure>
+    <img src="img/3d_day.png" alt="3D plant view at 13:00 while the tank discharges to the campus">
+    <figcaption>13:00: the tank discharges to the campus.</figcaption>
+  </figure>
+</div>
+
+<h3>Step 4. Tonight's recommendation</h3>
+<div class="split narrow">
+  <figure>
+    <img src="img/g_reco.png" alt="The recommendation card: the charge target in a teal box, four result rows, a status note and Approve and Adjust buttons">
+    <figcaption>Recommendation card.</figcaption>
+  </figure>
+  <div>
+    <p>The teal box is the advice: how much to charge the tank to, and how many electric chillers to run between 22:00 and 08:00. A "capped" chip appears when the target is limited by tank size.</p>
+    <dl class="terms">
+      <dt>AI forecast of tomorrow's tank need</dt><dd>What the random forest predicts.</dd>
+      <dt>What tomorrow actually needs</dt><dd>What the simulated day really needs.</dd>
+      <dt>Electric chillers in daytime</dt><dd>Hours the plan still needs them. Zero is the goal.</dd>
+      <dt>Cooling shortfall</dt><dd>Cold the plant could not supply. "none" is the goal.</dd>
+    </dl>
+    <p>The coloured note under the rows states the outcome in words.</p>
+  </div>
+</div>
+
+<h3>Step 5. Approve or adjust, and the decision log</h3>
+<div class="split narrow">
+  <figure>
+    <img src="img/g_adjust.png" alt="The recommendation card with the Adjust box open, a typed target of 9,000 RTh and a preview note">
+    <figcaption>Adjust box after a preview.</figcaption>
+  </figure>
+  <div>
+    <ul>
+      <li><strong>Approve plan</strong> accepts the AI target. One click writes one row to the decision log.</li>
+      <li><strong>Adjust manually</strong> opens a box. Type your own charge target (0 up to the tank capacity).</li>
+      <li><strong>Preview</strong> re-runs the day with your number. The charts, plant view and an "Operator plan" note switch to your plan. The AI recommendation and the comparison table stay as they were.</li>
+      <li><strong>Confirm and log</strong> writes the row. It stays disabled until you have previewed. <strong>Cancel</strong> closes the box.</li>
+    </ul>
+    <p class="note">Nothing is logged except on Approve or a confirmed Adjust. The server recomputes the plan itself before it writes, so the log never holds numbers typed in the browser.</p>
+  </div>
+</div>
+<p>The log lives in <code>data/decision_log.csv</code>, which git ignores. It holds one row per decision: time, action, the inputs, the AI target, your target, the outcome and the energy for each strategy, all labelled SIMULATED. If the file is missing, the log shows empty. If an old file has different columns, it is renamed to <code>decision_log.&lt;date-time&gt;.old.csv</code> and a fresh file starts.</p>
+<figure>
+  <img src="img/decision_log.png" alt="The decision log table after one approved and one adjusted decision">
+  <figcaption>Decision log card after one Approve and one Adjust. It shows the newest 20 rows. A "Download CSV" link beside the heading saves the full file.</figcaption>
+</figure>
+</section>
+
+<section>
+<h2>4. How to read the charts and the table</h2>
+<figure>
+  <img src="img/g_charts.png" alt="Two charts: stacked hourly bars of who supplies the cold, and the tank level over 24 hours">
+  <figcaption>Left: who supplies the cold, hour by hour. Right: tank level. SIMULATED.</figcaption>
+</figure>
+<ul>
+  <li><strong>Who supplies the cold.</strong> Each bar is one hour from 22:00 to 21:00. Teal is absorption chillers, blue is the tank, amber is electric chillers and grey is cold going into the tank. A red cap marks unmet cooling. The outlined bar is the hour chosen on the scrubber.</li>
+  <li><strong>Tank level.</strong> It fills from 22:00 to 08:00 and drains through the day. The ideal day ends near empty at 18:00 with no daytime electric chillers. A dashed line marks capacity.</li>
+</ul>
+<h3>The comparison table</h3>
+<figure>
+  <img src="img/g_table.png" alt="The comparison table: three strategies with charge, electric-chiller energy, difference to always full, daytime hours, shortfall and cold left in the tank">
+  <figcaption>"Same day, three ways to decide the charge", SIMULATED.</figcaption>
+</figure>
+<p>The table runs the same day under three strategies: always fill the tank, a weekday/weekend rule, and the AI forecast. The columns give the charge, electric-chiller energy, the saving against always full, daytime chiller hours, shortfall and cold left in the tank at 21:00. The "Assumptions and limits" list under the table repeats what is assumed.</p>
+<p class="warn"><strong>Read single days with care.</strong> Cold left in the tank at 21:00 counts as spent. On the hot weekday example (23 Oct 2024, 33.2 &deg;C) the rule beat the AI that day, 5,412 against 5,936 kWh. A single day can go either way, so judge the advisor over the season.</p>
+
+<h3>Season result</h3>
+<p>The year-long simulation gives these electric-chiller energy totals for October to December (SIMULATED):</p>
+<div class="tablewrap" style="max-width:420px">
+<table>
+  <thead><tr><th>Strategy</th><th class="num">Energy (MWh)</th></tr></thead>
+  <tbody>
+    <tr><td>Always fill the tank</td><td class="num">373.7</td></tr>
+    <tr><td>Weekday/weekend rule</td><td class="num">346.4</td></tr>
+    <tr><td>AI forecast</td><td class="num">338.9</td></tr>
+    <tr><td>Perfect forecast</td><td class="num">336.5</td></tr>
+  </tbody>
+</table>
+</div>
+<p>The AI uses about 9 % less than always fill and about 2 % less than the rule.</p>
+</section>
+
+<section>
+<h2>5. How the AI decided</h2>
+<p>The "How the AI decided" card sits below the charts and can be collapsed. It explains the random-forest forecast for the chosen source day, before the "AI forecast error" slider is applied.</p>
+<figure style="max-width:80%">
+  <div class="crop top"><img src="img/rf_panel.png" alt="Top half of the How the AI decided card: the table of 12 inputs and the two importance bar charts"></div>
+  <figcaption>The explainer card, top half: inputs (part 1) and importance (part 2). SIMULATED.</figcaption>
+</figure>
+<figure style="max-width:80%">
+  <div class="crop bottom"><img src="img/rf_panel.png" alt="Bottom half of the card: histogram of the 400 tree forecasts, one tree's path and the training paragraph"></div>
+  <figcaption>The explainer card, bottom half: tree votes (part 3), one tree's path (part 4) and training (part 5).</figcaption>
+</figure>
+<ol>
+  <li><strong>What the model saw.</strong> A table of the 12 inputs with their values for this day and where each comes from.</li>
+  <li><strong>Which inputs matter.</strong> Two bar charts. Permutation importance shows how much held-out error rises when an input is shuffled. Read it first. Built-in importance favours inputs with many split points. Month always shows 0 in the permutation chart by design. It does not mean month is unimportant.</li>
+  <li><strong>How the trees voted.</strong> A histogram of the 400 trees' forecasts, with the mean marked. The mean is the AI forecast.</li>
+  <li><strong>One tree's path.</strong> The first five questions one tree asked about this day, such as "is the maximum temperature at or below a value?".</li>
+  <li><strong>Training and accuracy.</strong> The forest has 400 trees and at least 3 days per leaf. It trains on January to September and is tested on October to December, which it never sees in training. On that test its mean absolute error is about 405 RTh, against about 967 RTh for the weekday/weekend rule.</li>
+</ol>
+</section>
+
+<section>
+<h2>6. Known limitations</h2>
+<ul>
+  <li>The campus load is synthetic. No UTP plant data was used, and the app names no real buildings.</li>
+  <li>Only one year of weather (2024) is available, and public holidays are not modelled.</li>
+  <li>The day-ahead weather forecast is SIMULATED: the observed weather plus random error. Real forecasts are worse.</li>
+  <li><strong>Semester break.</strong> The AI never saw a break in training, so it treats it as a normal weekday. It over-charges the tank and much cold is left unused at 21:00. The dashboard flags this in its status note.</li>
+  <li>The phone alert in the original sketch is not built. The advisor only suggests and the operator decides.</li>
+</ul>
+
+</section>
+
+</div>
