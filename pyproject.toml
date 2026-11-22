@@ -1,6 +1,9 @@
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = ["slow: slow tests", "e2e: end-to-end browser tests"]
+filterwarnings = [
+    "ignore:Series.dt.dayofweek is deprecated:Warning",
+]
 
 [tool.ruff]
 line-length = 100
