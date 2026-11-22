@@ -72,6 +72,10 @@
       ec_campus: row.ec_load_rt,
       tank_campus: row.tank_out_rt,
       return: row.campus_load_rt,
+      campus_header: row.campus_load_rt,
+      to_academic: row.academic_rt,
+      to_evening: row.evening_rt,
+      to_base: row.base_rt,
     };
     const frac = row.tank_level_rth / plant.tank_capacity_rth;
     api.update({ ecCount: row.ec_count, frac, flows, max: maxLoad(data) });
@@ -109,6 +113,10 @@
           ec_campus: ["Electric chillers to campus", row.ec_load_rt],
           tank_campus: ["Tank to campus (discharge)", row.tank_out_rt],
           return: ["Warm return to plant", row.campus_load_rt],
+          campus_header: ["Supply header to campus", row.campus_load_rt],
+          to_academic: ["Supply to Academic", row.academic_rt],
+          to_evening: ["Supply to Library & evening classes", row.evening_rt],
+          to_base: ["Supply to Data centre & labs", row.base_rt],
         };
         const [n, v] = names[t.key];
         return `${n}: ${fmt(v)} RT`;
@@ -200,6 +208,9 @@
       for (const id of ["sac", "ec", "tank", "academic", "evening", "base", "campus"]) makeLabel(id);
       hook.camera = null;
       Object.defineProperty(hook, "camera", { get: () => api.getCamera(), enumerable: true });
+      hook.segmentPoints = m.SEGMENT_POINTS;
+      hook.segmentEnds = Object.fromEntries(Object.entries(m.SEGMENT_POINTS).map(([k, p]) => [k, [p[0], p[p.length - 1]]]));
+      hook.boxes = m.BOXES;
       hook.setCamera = (p) => api.setCamera(p);
       // sca:hour may have fired before this module finished loading
       const data = window.SCA && window.SCA.getData();

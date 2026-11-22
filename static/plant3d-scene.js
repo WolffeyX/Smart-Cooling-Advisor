@@ -19,13 +19,39 @@ const SEGMENTS = {
   ec_tank: [BLUE, [[-15, 0.6, 6.7], [-15, 0.6, 5], [-6, 0.6, 5], [-3, 0.9, 2], [-2.9, 0.9, 0.5]]],
   ec_campus: [BLUE, [[-8, 0.6, 6.7], [-8, 0.6, 6.2], [6, 0.6, 6.2], [8, 1.2, 3]]],
   tank_campus: [BLUE, [[3, 1.2, 0], [8, 1.2, 0]]],
-  return: [ORANGE, [[15.5, 0.5, 0], [17, 0.5, 0], [17, 0.5, -13], [-19, 0.5, -13], [-19, 0.5, -6]]],
+  // supply header along the blocks' west side; each block has its own stub ending on its west face (x = 10.5)
+  campus_header: [BLUE, [[8, 1.2, -11], [8, 1.2, 7]]],
+  to_academic: [BLUE, [[8, 1.2, -7], [10.5, 1.2, -7]]],
+  to_evening: [BLUE, [[8, 1.2, 0], [10.5, 1.2, 0]]],
+  to_base: [BLUE, [[8, 1.2, 7], [10.5, 1.2, 7]]],
+  // warm return: starts on the last block's east face, collects behind the blocks, runs west along z = -13,
+  // south along x = -19, then east along z = 10.5 and ends on the EC3 south face (z = 9.3)
+  return: [ORANGE, [[15.5, 0.5, 7], [17, 0.5, 7], [17, 0.5, -13], [-19, 0.5, -13], [-19, 0.5, 10.5], [-5, 0.5, 10.5], [-5, 0.5, 9.3]]],
 };
+// thin static return branches (always shown): each one joins the trunk and ends on a component or block face
+const STUBS = [
+  [[15.5, 0.5, 0], [17, 0.5, 0]],
+  [[15.5, 0.5, -7], [17, 0.5, -7]],
+  [[-19, 0.5, -6], [-16.5, 0.5, -6]],
+  [[-19, 0.5, -9.6], [-16.5, 0.5, -9.6]],
+  ...[-16, -12.4, -8.8].map((x) => [[x, 0.5, 10.5], [x, 0.5, 9.3]]),
+];
+const ECS_X = [0, 1, 2, 3].map((i) => -16 + i * 3.6);
+export const BOXES = [
+  { id: "sac0", min: [-16.5, 0, -7.5], max: [-11.5, 2.5, -4.5] },
+  { id: "sac1", min: [-16.5, 0, -11.1], max: [-11.5, 2.5, -8.1] },
+  ...ECS_X.map((x, i) => ({ id: `ec${i}`, min: [x - 1.3, 0, 6.7], max: [x + 1.3, 2, 9.3] })),
+  { id: "tank", min: [-3, 0, -3], max: [3, TANK_H, 3] },
+];
+export const SEGMENT_POINTS = Object.fromEntries(Object.entries(SEGMENTS).map(([k, v]) => [k, v[1]]));
 export const BLOCKS = [
   { key: "academic", z: -7, floors: 6 },
   { key: "evening", z: 0, floors: 4 },
   { key: "base", z: 7, floors: 3 },
 ];
+for (const b of BLOCKS) {
+  BOXES.push({ id: b.key, min: [BLOCK_X - 2.5, 0, b.z - 2.5], max: [BLOCK_X + 2.5, b.floors * FLOOR_H, b.z + 2.5] });
+}
 
 const curveOf = (pts) =>
   new THREE.CatmullRomCurve3(pts.map((p) => new THREE.Vector3(...p)), false, "catmullrom", 0);
@@ -100,13 +126,9 @@ export function createScene(container) {
     anchors[b.key] = new THREE.Vector3(BLOCK_X, h + 0.5, b.z);
   }
 
-  // static header and stub pipes (thin; always shown)
-  const thin = (pts, color) =>
-    mk(new THREE.TubeGeometry(curveOf(pts), 24, 0.12, 5, false), color, { transparent: true, opacity: 0.5 });
-  thin([[8, 1.2, -11], [8, 1.2, 8.5]], BLUE);
-  for (const b of BLOCKS) {
-    thin([[8, 1.2, b.z], [10.5, 1.2, b.z]], BLUE);
-    thin([[15.5, 0.5, b.z], [17, 0.5, b.z]], ORANGE);
+  // static thin return branches
+  for (const pts of STUBS) {
+    mk(new THREE.TubeGeometry(curveOf(pts), 12, 0.12, 5, false), ORANGE, { transparent: true, opacity: 0.5 });
   }
 
   // flow segments: a tube (dim when idle) plus particles (only while RT > 0)

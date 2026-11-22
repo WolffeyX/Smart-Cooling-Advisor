@@ -515,6 +515,57 @@ def test_3d_toggle_and_sync(page, server):
     assert errors == []
 
 
+def _dist_box(p, b):
+    d = [max(b["min"][i] - p[i], 0, p[i] - b["max"][i]) for i in range(3)]
+    return sum(x * x for x in d) ** 0.5
+
+
+def _dist_seg(p, a, b):
+    ab = [b[i] - a[i] for i in range(3)]
+    ap = [p[i] - a[i] for i in range(3)]
+    n = sum(x * x for x in ab)
+    t = 0 if n == 0 else max(0, min(1, sum(ap[i] * ab[i] for i in range(3)) / n))
+    return sum((p[i] - (a[i] + t * ab[i])) ** 2 for i in range(3)) ** 0.5
+
+
+def test_3d_pipes_connected(page, server):
+    errors = _open_3d(page, server)
+    st = page.evaluate("window.__plant3d")
+    boxes, ends, pts = st["boxes"], st["segmentEnds"], st["segmentPoints"]
+    assert {"campus_header", "to_academic", "to_evening", "to_base", "return"} <= set(ends)
+    for key, e in ends.items():
+        for p in e:
+            near_box = any(_dist_box(p, b) <= 0.6 for b in boxes)
+            near_pipe = any(
+                _dist_seg(p, q[i], q[i + 1]) <= 0.6
+                for k, q in pts.items()
+                if k != key
+                for i in range(len(q) - 1)
+            )
+            assert near_box or near_pipe, f"{key} end {p} is dangling"
+    assert errors == []
+
+
+def test_3d_block_stubs_follow_block_load(page, server):
+    errors = _open_3d(page, server)
+    hourly = _hourly(page)
+    page.evaluate("window.SCA.setHour(15)")
+    f = page.evaluate("window.__plant3d.flows")
+    assert f["to_academic"] == hourly[15]["academic_rt"]
+    assert f["to_evening"] == hourly[15]["evening_rt"]
+    assert f["to_base"] == hourly[15]["base_rt"]
+    assert f["campus_header"] == hourly[15]["campus_load_rt"]
+    page.evaluate("window.SCA.setHour(4)")
+    assert page.evaluate("window.__plant3d.flows.to_academic") == 0
+    assert errors == []
+
+
+def test_3d_idle_key_visible(page, server):
+    _open_3d(page, server)
+    assert page.is_visible("#plant-3d-key")
+    assert "idle" in page.inner_text("#plant-3d-key").lower()
+
+
 def test_3d_labels_from_api(page, server):
     errors = _open_3d(page, server)
     hourly = _hourly(page)
