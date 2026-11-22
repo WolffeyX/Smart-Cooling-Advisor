@@ -47,7 +47,9 @@ def impact_line(baseline_kwh: float, ai_kwh: float) -> dict:
 
 def impact_note(levels_21: dict[str, float]) -> str:
     """Neutral one-day caveat built from the per-strategy 21:00 tank levels."""
-    full, rule, ai = (f"{round(levels_21[k]):,}" for k in ("always_full", "calendar_rule", "ai_forecast"))
+    full, rule, ai = (
+        f"{round(levels_21[k]):,}" for k in ("always_full", "calendar_rule", "ai_forecast")
+    )
     return (
         "Single day (SIMULATED): cold left in the tank at 21:00 counts as spent, which favours "
         f"the plan that leaves less (always fill {full} RTh, rule {rule} RTh, AI {ai} RTh left). "
@@ -195,9 +197,7 @@ def build_response(bank: DayBank, req: dict, base_params: dict, round_values: bo
     impact = {
         "vs_always_full": impact_line(round(e_full, 1), e_ai),
         "vs_calendar_rule": impact_line(round(sums["calendar_rule"]["ec_energy_kwh"], 1), e_ai),
-        "note": impact_note(
-            {name: runs[name]["tank_level_rth"][-1] for name in runs}
-        ),
+        "note": impact_note({name: runs[name]["tank_level_rth"][-1] for name in runs}),
         "grid_kg_per_kwh": GRID_EMISSION_KG_PER_KWH,
         "grid_source": GRID_EMISSION_SOURCE,
         "label": "SIMULATED",

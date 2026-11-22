@@ -554,11 +554,9 @@ def test_3d_pipes_connected(page, server):
     assert pts["sac_campus"][-1] == pts["campus_header"][0]
     # every box is wired to some pipe (no dead-end SAC / EC / block)
     for b in boxes:
-        assert any(
-            _dist_box(p, b) <= TOL_BOX
-            for q in pts.values()
-            for p in (q[0], q[-1])
-        ), f"{b['id']} has no pipe on it"
+        assert any(_dist_box(p, b) <= TOL_BOX for q in pts.values() for p in (q[0], q[-1])), (
+            f"{b['id']} has no pipe on it"
+        )
     TOL = 0.35
     lines = {**pts, **stubs}
     ends = {**ends, **{k: [q[0], q[-1]] for k, q in stubs.items()}}
