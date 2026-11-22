@@ -97,8 +97,11 @@ class DecisionLog:
         self._lock = threading.Lock()
 
     def _header_ok(self) -> bool:
-        with open(self.path, newline="", encoding="utf-8") as f:
-            return next(csv.reader(f), None) == COLUMNS
+        try:
+            with open(self.path, newline="", encoding="utf-8") as f:
+                return next(csv.reader(f), None) == COLUMNS
+        except UnicodeDecodeError:
+            return False
 
     def _rotate(self) -> None:
         stamp = _now().strftime("%Y%m%d-%H%M%S")
@@ -126,5 +129,10 @@ class DecisionLog:
         with self._lock:
             if not self.path.exists():
                 return []
-            with open(self.path, newline="", encoding="utf-8") as f:
-                return list(csv.DictReader(f))[::-1]
+            if not self._header_ok():
+                return []
+            try:
+                with open(self.path, newline="", encoding="utf-8") as f:
+                    return list(csv.DictReader(f))[::-1]
+            except UnicodeDecodeError:
+                return []

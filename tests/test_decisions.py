@@ -147,3 +147,21 @@ def test_decision_row_rounds_and_timestamps(client):
     row = decisions.decision_row("approved", BODY, resp, datetime(2026, 1, 2, 3, 4, 5, 999))
     assert row["timestamp"] == "2026-01-02T03:04:05"
     assert set(row) == set(COLUMNS)
+
+
+def test_rows_ignores_foreign_header(tmp_path):
+    p = tmp_path / "log.csv"
+    p.write_bytes(b"a,b\r\n1,2\r\n")
+    assert DecisionLog(p).rows() == []
+
+
+def test_non_utf8_log_is_tolerated(tmp_path):
+    p = tmp_path / "log.csv"
+    raw = b"\xff\xfe\x00bad\xff\r\n1,2\r\n"
+    p.write_bytes(raw)
+    dl = DecisionLog(p)
+    assert dl.rows() == []
+    dl.append(dict.fromkeys(COLUMNS, "x"))
+    olds = list(tmp_path.glob("*.old.csv"))
+    assert len(olds) == 1 and olds[0].read_bytes() == raw
+    assert len(dl.rows()) == 1

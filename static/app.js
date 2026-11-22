@@ -63,6 +63,7 @@
     $("adjust").setAttribute("aria-expanded", "false");
     $("operator-note").hidden = true;
     $("override-confirm").disabled = true;
+    $("approve").disabled = false; // the plan on screen is the AI plan again
   }
 
   function schedule() {
@@ -407,6 +408,7 @@
     inp.min = 0;
     inp.value = Math.round(data.recommendation.charge_target_rth);
     $("override-confirm").disabled = true;
+    $("approve").disabled = true; // approving would log the AI plan, not the previewed one
     $("adjust-box").hidden = false;
     $("adjust").setAttribute("aria-expanded", "true");
     inp.focus();

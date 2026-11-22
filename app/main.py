@@ -1,5 +1,6 @@
 """FastAPI app: /health, /recommend, and the static single-page UI."""
 
+import mimetypes
 import os
 from contextlib import asynccontextmanager
 from datetime import datetime
@@ -86,4 +87,7 @@ def explain(request: Request, source_date: str = Query(pattern=r"^\d{4}-\d{2}-\d
         )
 
 
+# Windows registries can map .js to text/plain, which browsers refuse for module scripts.
+mimetypes.add_type("text/javascript", ".js")
+mimetypes.add_type("text/javascript", ".mjs")
 app.mount("/", StaticFiles(directory=ROOT_DIR / "static", html=True), name="static")

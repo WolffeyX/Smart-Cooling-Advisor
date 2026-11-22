@@ -1,6 +1,7 @@
 """Browser tests for the one-page dashboard (Playwright sync API, Chromium)."""
 
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -56,6 +57,7 @@ def server():
             proc.wait(timeout=10)
         except subprocess.TimeoutExpired:
             proc.kill()
+        shutil.rmtree(log_dir, ignore_errors=True)
 
 
 @pytest.fixture(scope="session")
@@ -224,6 +226,24 @@ def test_adjust_preview_then_confirm(page, server):
     assert page.is_hidden("#adjust-box")
 
 
+def test_approve_disabled_during_override_preview(page, server):
+    _ready(page, server)
+    page.wait_for_function("window.SCADecisions !== undefined")
+    posts = []
+    page.on("request", lambda r: posts.append(r) if _is_post("/decisions")(r) else None)
+    assert not page.is_disabled("#approve")
+    page.click("#adjust")
+    assert page.is_disabled("#approve")
+    page.fill("#override-input", "9000")
+    page.click("#override-preview")
+    page.wait_for_function("document.querySelector('#operator-note').textContent.includes('9,000')")
+    assert page.is_disabled("#approve")
+    page.click("#override-cancel")
+    page.wait_for_function("!document.querySelector('#approve').disabled")
+    assert not page.is_disabled("#approve")
+    assert posts == []
+
+
 def test_input_change_clears_override(page, server):
     _ready(page, server)
     page.click("#adjust")
@@ -337,10 +357,11 @@ def test_explainer_matches_api(page, server):
     for m in ex["training_months"]:
         assert _MONTHS[m - 1] in training
     assert "400" in training
+    assert "out-of-sample" in training
     card = page.inner_text("#explain")
     assert "SIMULATED" in card and "MEASURED" in card
     assert "distinct training days reaching this split" in card
-    assert "month" in page.inner_text("#explain-month-note").lower()
+    assert "never trained on" in page.inner_text("#explain-month-note")
     assert page.locator("#explain-perm .bar").count() == 12
     assert page.locator("#explain-impurity .bar").count() == 12
     assert "before the what-if" in card
@@ -543,6 +564,19 @@ def test_3d_tooltip_on_hover(page, server):
     ec = page.inner_text("#plant-tooltip")
     assert f"charging tank {round(row['charge_rt']):,} RT" in ec
     assert f"to campus {round(row['ec_load_rt']):,} RT" in ec
+    assert errors == []
+
+
+def test_3d_tooltip_refreshes_on_hour_change(page, server):
+    errors = _open_3d(page, server)
+    page.evaluate("window.SCA.setHour(15)")
+    assert page.evaluate("window.__plant3d.hoverProbe('tank')")
+    before = page.inner_text("#plant-tooltip")
+    page.evaluate("window.SCA.setHour(4)")
+    after = page.inner_text("#plant-tooltip")
+    level = round(_hourly(page)[4]["tank_level_rth"])
+    assert f"{level:,} of" in after
+    assert after != before
     assert errors == []
 
 

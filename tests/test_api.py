@@ -101,3 +101,10 @@ def test_three_vendored(client):
     assert r.status_code == 200
     assert "javascript" in r.headers["content-type"]
     assert "REVISION = '170'" in r.text
+
+
+@pytest.mark.parametrize("path", ["/plant3d.js", "/app.js"])
+def test_js_served_as_javascript(client, path):
+    r = client.get(path)
+    assert r.status_code == 200
+    assert r.headers["content-type"].startswith("text/javascript")
