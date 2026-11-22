@@ -154,6 +154,9 @@
     renderHist(ex);
     renderPath(ex);
     renderTraining(ex);
+    $("explain-n-inputs").textContent = String(ex.features.length);
+    $("explain-n-trees").textContent = String(ex.n_trees);
+    $("explain-tree-no").textContent = String(ex.path.tree_index + 1);
     shownDate = ex.source_date;
     $("explain-date").textContent = ex.source_date;
   }
@@ -182,7 +185,11 @@
       applied = mySeq;
       render(ex);
     } catch (err) {
-      if (mySeq === seq) status(`Could not load the explanation (${err.message}).`);
+      if (mySeq === seq) {
+        $("explain-body").hidden = true; // do not show the previous day's explanation
+        wantedDate = null; // allow a retry on the next sca:data event
+        status(`Could not load the explanation (${err.message}).`);
+      }
     }
   }
 

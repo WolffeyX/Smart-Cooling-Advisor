@@ -367,3 +367,88 @@ def test_explainer_refetches_only_on_date_change(page, server):
     page.wait_for_function("window.__explainReqs.length === 2")
     page.wait_for_timeout(500)
     assert page.evaluate("window.__explainReqs.length") == 2
+
+
+_EXPLAIN_HOOKS = """
+(() => {
+  window.__explainReqs = [];
+  window.__delayExplain = window.__delayExplain || 0;
+  window.__failExplain = false;
+  const orig = window.fetch.bind(window);
+  window.fetch = async (...args) => {
+    const url = String(args[0] && args[0].url ? args[0].url : args[0]);
+    if (url.includes('/explain')) {
+      window.__explainReqs.push(url);
+      if (window.__failExplain) return new Response('boom', { status: 500 });
+      if (window.__delayExplain) {
+        const ms = window.__delayExplain;
+        window.__delayExplain = 0;
+        const res = await orig(...args);
+        await new Promise((r) => setTimeout(r, ms));
+        return res;
+      }
+    }
+    return orig(...args);
+  };
+})();
+"""
+
+
+def _other_temp(page, server, first_date):
+    for t in (24, 26, 28, 33, 35, 38):
+        r = page.request.post(f"{server}/recommend", data={**BASE_BODY, "forecast_max_temp_c": t})
+        if r.json()["scenario"]["source_date"] != first_date:
+            return t, r.json()["scenario"]["source_date"]
+    raise AssertionError("no temperature gives a different source date")
+
+
+def test_explainer_slow_then_fast_shows_latest(page, server):
+    page.add_init_script("window.__delayExplain = 1800;" + _EXPLAIN_HOOKS)
+    page.goto(server)
+    page.wait_for_selector("#hero-target:not(:empty)")
+    first = page.get_attribute("#scenario-date", "data-date")
+    temp, date_b = _other_temp(page, server, first)
+    page.fill("#temp", str(temp))
+    page.wait_for_selector(f'#explain-date:text-is("{date_b}")')
+    page.wait_for_timeout(2500)  # the slow response for the first date lands and must be dropped
+    assert page.inner_text("#explain-date") == date_b
+    ex_b = page.request.get(f"{server}/explain", params={"source_date": date_b}).json()
+    assert f"{round(ex_b['trees']['mean']):,}" in page.text_content("#explain-hist")
+
+
+def test_explainer_cache_hit_on_return(page, server):
+    page.add_init_script(_EXPLAIN_HOOKS)
+    _ready(page, server)
+    page.wait_for_selector("#explain-path li")
+    first = page.get_attribute("#scenario-date", "data-date")
+    temp, date_b = _other_temp(page, server, first)
+    page.fill("#temp", str(temp))
+    page.wait_for_selector(f'#explain-date:text-is("{date_b}")')
+    assert page.evaluate("window.__explainReqs.length") == 2
+    page.fill("#temp", "31")
+    page.wait_for_selector(f'#explain-date:text-is("{first}")')
+    page.wait_for_timeout(500)
+    assert page.evaluate("window.__explainReqs.length") == 2
+    assert page.locator("#explain-features tbody tr").count() == 12
+
+
+def test_explainer_error_path_and_retry(page, server):
+    errors = []
+    page.on("pageerror", lambda e: errors.append(str(e)))
+    page.add_init_script(_EXPLAIN_HOOKS)
+    _ready(page, server)
+    page.wait_for_selector("#explain-path li")
+    first = page.get_attribute("#scenario-date", "data-date")
+    temp, date_b = _other_temp(page, server, first)
+    page.evaluate("window.__failExplain = true")
+    page.fill("#temp", str(temp))
+    page.wait_for_selector("#explain-status:not([hidden])")
+    assert "Could not load the explanation" in page.inner_text("#explain-status")
+    assert page.is_hidden("#explain-body")  # the old day is not shown under the new forecast
+    page.evaluate("window.__failExplain = false")
+    page.fill("#temp", "31")
+    page.wait_for_selector(f'#explain-date:text-is("{first}")')
+    page.fill("#temp", str(temp))  # retry of the previously failed date fetches again
+    page.wait_for_selector(f'#explain-date:text-is("{date_b}")')
+    assert page.is_visible("#explain-body")
+    assert errors == []

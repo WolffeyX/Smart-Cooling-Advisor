@@ -131,7 +131,7 @@
   <p class="note">This explains the random-forest forecast of tomorrow's tank need <strong>before the what-if error slider</strong> is applied, for the source day <span id="explain-date">&hellip;</span>. <span id="explain-forecast"></span></p>
   <p id="explain-status" class="note" role="status">Loading the explanation&hellip;</p>
   <div id="explain-body" hidden>
-    <h3>1. What the model saw (12 inputs)</h3>
+    <h3>1. What the model saw (<span id="explain-n-inputs">&hellip;</span> inputs)</h3>
     <div class="tablewrap"><table id="explain-features">
       <thead><tr><th>Input</th><th>Value</th><th>Where it comes from</th></tr></thead>
       <tbody></tbody>
@@ -145,10 +145,10 @@
     </div>
     <p class="note">Built-in (impurity) importance favours features with many split points; permutation importance measures how much held-out error rises when a feature is shuffled. Read the permutation numbers first; a negative value means shuffling did not hurt.</p>
     <p id="explain-month-note" class="note">Month always shows 0 in the permutation chart by design: each model is tested on months outside its training range, so shuffling month changes nothing. It does not mean month doesn't matter.</p>
-    <h3>3. How the 400 trees voted</h3>
+    <h3>3. How the <span id="explain-n-trees">&hellip;</span> trees voted</h3>
     <svg id="explain-hist" role="img" aria-label="Histogram of per-tree forecasts with the mean marked"></svg>
     <p id="explain-hist-note" class="note"></p>
-    <h3>4. One tree's path (tree 1)</h3>
+    <h3>4. One tree's path (tree <span id="explain-tree-no">&hellip;</span>)</h3>
     <ol id="explain-path"></ol>
     <p id="explain-path-more" class="note"></p>
     <p id="explain-path-end" class="note"></p>
