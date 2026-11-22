@@ -1,0 +1,6 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["slow: slow tests", "e2e: end-to-end browser tests"]
+
+[tool.ruff]
+line-length = 100
