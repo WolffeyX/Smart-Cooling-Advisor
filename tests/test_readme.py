@@ -29,7 +29,7 @@ def test_guide_pdf_exists_and_short():
     pdf = config.ROOT_DIR / "docs" / "user_guide.pdf"
     assert pdf.stat().st_size > 100_000
     pages = len(re.findall(rb"/Type\s*/Page\b(?!s)", pdf.read_bytes()))
-    assert 4 <= pages <= 8, pages
+    assert 4 <= pages <= 9, pages
     html_path = config.ROOT_DIR / "docs" / "guide" / "user_guide.html"
     html = html_path.read_text(encoding="utf-8")
     low = html.lower()

@@ -29,7 +29,7 @@ SCENARIOS = [
 
 # 3D camera positions (world units). HOME is [28, 20, 30] in static/plant3d-scene.js.
 NIGHT_CAMERA = [-26, 46, 22]  # 02:00 charging: front-left, high (labels all readable)
-DAY_CAMERA = [30, 6, 34]  # 13:00 discharging: front-right, low (labels do not overlap)
+DAY_CAMERA = [34, 8, 32]  # 13:00 discharging: front-right, low (labels do not overlap)
 NIGHT_HOUR = 4  # 02:00 (charging)
 DAY_HOUR = 15  # 13:00 (daytime discharge)
 
@@ -143,6 +143,7 @@ def shoot_guide(browser):
     page.locator("section.plant-card").screenshot(path=str(GUIDE_OUT / "g_plant2d.png"))
     page.locator("section.charts").screenshot(path=str(GUIDE_OUT / "g_charts.png"))
     page.locator("section.card:has(#comparison)").screenshot(path=str(GUIDE_OUT / "g_table.png"))
+    page.locator("#impact").screenshot(path=str(GUIDE_OUT / "g_impact.png"))
     page.click("#adjust")
     page.fill("#override-input", "9000")
     with page.expect_response(lambda r: r.url.endswith("/recommend")):

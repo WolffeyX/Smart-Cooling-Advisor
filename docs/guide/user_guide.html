@@ -70,7 +70,7 @@ figcaption { font-size: .86rem; color: var(--muted); margin-top: 4px; max-width:
 .split { display: grid; grid-template-columns: minmax(0, 40%) minmax(0, 1fr); gap: 8px 22px; align-items: start; }
 .split > * { min-width: 0; }
 .split.wide { grid-template-columns: minmax(0, 40%) minmax(0, 1fr); }
-.cropday { aspect-ratio: 678 / 424; object-fit: cover; object-position: 50% 50%; }
+.plantcrop { aspect-ratio: 1356 / 520; object-fit: cover; object-position: 50% 45%; }
 .split.narrow { grid-template-columns: minmax(0, 30%) minmax(0, 1fr); }
 .pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; break-inside: avoid; }
 .pair > * { min-width: 0; }
@@ -133,7 +133,7 @@ footer { margin-top: 28px; color: var(--muted); font-size: .88rem; border-top: 1
   <tbody>
     <tr><td><strong>SIMULATED</strong></td><td>Produced by our model and assumptions.</td><td>The campus load, the simulated day-ahead weather forecast, every energy and tank number.</td></tr>
     <tr><td><strong>MEASURED</strong></td><td>Taken from real data.</td><td>The 2024 weather, and the step-1 classifier accuracy of 78.8 % on October to December.</td></tr>
-    <tr><td><strong>ASSUMPTION</strong></td><td>A value we chose.</td><td>Exam and break multipliers (0.9 and 0.35), the split of load into three blocks by hour, the plant parameters, the grid emission factor (0.740 kg CO2/kWh, Energy Commission (Suruhanjaya Tenaga) Grid Emission Factor, Peninsular Malaysia 2024, provisional).</td></tr>
+    <tr><td><strong>ASSUMPTION</strong></td><td>A value we chose.</td><td>Exam and break multipliers (0.9 and 0.35), the split of load into three blocks by hour, the plant parameters, the grid emission factor (0.740 kg CO₂/kWh, Energy Commission (Suruhanjaya Tenaga) Grid Emission Factor, Peninsular Malaysia 2024, provisional).</td></tr>
     <tr><td><strong>PROPOSED</strong></td><td>A design for a future plant, not in use.</td><td>The advisor and its approve/adjust workflow.</td></tr>
   </tbody>
 </table>
@@ -195,17 +195,15 @@ playwright install chromium   # optional</pre></li>
 </div>
 
 <h3>Step 3. Plant view, 3D</h3>
-<p>Press <strong>3D</strong> in the card header. It needs WebGL; without it the button is disabled and 2D keeps working. The scene uses the same hour as the scrubber, Play and the charts. Drag to orbit, scroll to zoom and press <strong>Reset view</strong> to return. Hover a part to see its name and live value. The campus is drawn as three blocks (Academic, Library and evening, Data centre and labs), each labelled with its load. Blue pipes carry chilled supply and orange pipes carry return. Each building's feed pipe moves at that building's own load, so a block with no load that hour shows a dim pipe and no dots. The orange return runs from all three blocks back to the chillers, both the absorption chillers and the electric chillers. Moving dots show flow, and only where flow is above zero. A dim pipe is idle that hour, and the key in the corner of the view says so. This block split is an ASSUMPTION.</p>
-<div class="pair">
-<figure>
+<p>Press <strong>3D</strong> in the card header. It needs WebGL; without it the button is disabled and 2D keeps working. The scene uses the same hour as the scrubber, Play and the charts. Drag to orbit, scroll to zoom and press <strong>Reset view</strong> to return. Hover a part to see its name and live value. The campus is three blocks (Academic, Library and evening, Data centre and labs), each labelled with its load. This block split is an ASSUMPTION. Blue pipes carry chilled supply and orange pipes carry return. Each building's feed pipe moves at that building's own load. The orange return runs from all three blocks back to the chillers, both the absorption chillers and the electric chillers. Moving dots show water flowing this hour. A dim pipe is idle this hour, as the key in the corner of the view says.</p>
+<figure style="max-width:78%">
   <img src="img/g_3d_night.png" alt="3D plant view at 02:00 while the tank charges">
   <figcaption>02:00: electric chillers charge the tank. Hover a part for its live value.</figcaption>
 </figure>
-<figure>
-  <img class="cropday" src="img/g_3d_day.png" alt="3D plant view at 13:00 while the tank discharges to the campus">
+<figure style="max-width:78%">
+  <img class="plantcrop" src="img/g_3d_day.png" alt="3D plant view at 13:00 while the tank discharges to the campus">
   <figcaption>13:00: the tank and absorption chillers supply the campus.</figcaption>
 </figure>
-</div>
 
 <h3>Step 4. Tonight's recommendation, Approve and Adjust</h3>
 <div class="split narrow">
@@ -221,12 +219,16 @@ playwright install chromium   # optional</pre></li>
       <dt>Electric chillers in daytime</dt><dd>Hours the plan still needs them. Zero is the goal.</dd>
       <dt>Cooling shortfall</dt><dd>Cold the plant could not supply. "none" is the goal.</dd>
     </dl>
-    <p>The coloured note under the rows states the outcome in words. Below it, "Impact on this day" compares the AI plan with two simple baselines for the same day. Both figures are electric-chiller energy only.</p>
+    <p>The coloured note under the rows states the outcome in words. Below it, "Impact on this day" compares the AI plan with two simple baselines for the same day. All figures are electric-chiller energy only.</p>
+    <figure>
+      <img src="img/g_impact.png" alt="The Impact on this day block: kWh and CO₂ against always filling the tank and against the weekday/weekend rule, the grid factor and the one-day caveat">
+      <figcaption>The impact block for the default day.</figcaption>
+    </figure>
     <dl class="terms">
       <dt>vs always filling the tank</dt><dd>The baseline charges the tank full every night.</dd>
       <dt>vs weekday/weekend rule</dt><dd>The baseline charges to a fixed amount set by the calendar: one level on weekdays and another at weekends.</dd>
       <dt>less / more</dt><dd>"Less" means the AI used less electric-chiller energy than that baseline. "More" means it used more. The AI can do worse on a single day. On 23 Oct 2024 the weekday/weekend rule used less, so the card says "more".</dd>
-      <dt>CO2 figure</dt><dd>The kWh difference times 0.740 kg CO2/kWh. The factor is the Energy Commission (Suruhanjaya Tenaga) Grid Emission Factor, Peninsular Malaysia 2024 (provisional). It covers electricity only. It is an ASSUMPTION.</dd>
+      <dt>CO₂ figure</dt><dd>The kWh difference times 0.740 kg CO₂/kWh. It reads less or more together with the kWh. The factor is the Energy Commission (Suruhanjaya Tenaga) Grid Emission Factor, Peninsular Malaysia 2024 (provisional). It covers electricity only. It is an ASSUMPTION.</dd>
     </dl>
     <p class="note">One day overstates the saving. Cold left in the tank at 21:00 counts as spent, so a single day flatters the AI. Over Oct to Dec the AI saves about 9 % against always filling. The impact block always describes the AI recommendation, even when you preview your own number.</p>
     <p>Then decide:</p>

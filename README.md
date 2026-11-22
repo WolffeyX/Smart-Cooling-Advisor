@@ -6,7 +6,7 @@ Localhost MVP of an AI advisor for UTP's gas district cooling plant (TEB2023 Art
 
 ## User guide
 
-A walkthrough of every control and panel, with screenshots: [docs/user_guide.pdf](docs/user_guide.pdf) (8 pages, A4) or the web version [docs/guide/user_guide.html](docs/guide/user_guide.html). Rebuild the PDF with `python scripts/build_guide_pdf.py`.
+A walkthrough of every control and panel, with screenshots: [docs/user_guide.pdf](docs/user_guide.pdf) (9 pages, A4) or the web version [docs/guide/user_guide.html](docs/guide/user_guide.html). Rebuild the PDF with `python scripts/build_guide_pdf.py`.
 
 ## Install
 
