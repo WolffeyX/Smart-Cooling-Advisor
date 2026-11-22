@@ -29,8 +29,9 @@ def train_classifier(weather: pd.DataFrame) -> dict:
     data["target"] = data["target"].astype(int)
     train = data[data["month"] <= 9]
     test = data[data["month"] >= 10]
-    rf = RandomForestClassifier(n_estimators=300, min_samples_leaf=3,
-                                random_state=step1_model.RANDOM_STATE, n_jobs=-1)
+    rf = RandomForestClassifier(
+        n_estimators=300, min_samples_leaf=3, random_state=step1_model.RANDOM_STATE, n_jobs=-1
+    )
     rf.fit(train[CLASSIFIER_FEATURES], train["target"])
     pred = rf.predict(test[CLASSIFIER_FEATURES])
     return {
@@ -50,8 +51,9 @@ def load_hash(params: dict) -> str:
     return hashlib.sha1(payload.encode()).hexdigest()[:8]
 
 
-def campus_load_frame(weather: pd.DataFrame, params: dict,
-                      cache_dir: Path = DATA_DIR) -> pd.DataFrame:
+def campus_load_frame(
+    weather: pd.DataFrame, params: dict, cache_dir: Path = DATA_DIR
+) -> pd.DataFrame:
     """Hourly campus load (time, total_rt, base_rt, room_rt), cached as CSV by load hash."""
     path = Path(cache_dir) / f"campus_load_2024_{load_hash(params)}.csv"
     if path.exists():
@@ -63,12 +65,14 @@ def campus_load_frame(weather: pd.DataFrame, params: dict,
             pass  # corrupt or partial cache: fall through and rebuild
     total, _ = step5_plant.campus_load(weather, params)
     base = params["base_load_rt"] * (1 + 0.03 * (weather["temp"].to_numpy() - 27))
-    frame = pd.DataFrame({
-        "time": weather["time"].to_numpy(),
-        "total_rt": total,
-        "base_rt": base,
-        "room_rt": total - base,
-    })
+    frame = pd.DataFrame(
+        {
+            "time": weather["time"].to_numpy(),
+            "total_rt": total,
+            "base_rt": base,
+            "room_rt": total - base,
+        }
+    )
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_name(f"{path.name}.{os.getpid()}.tmp")
     try:
@@ -106,8 +110,9 @@ def _window_22h(values: np.ndarray, times: pd.Series, how: str) -> pd.Series:
     return agg
 
 
-def build_features(g: pd.DataFrame, weather: pd.DataFrame, total_rt: np.ndarray,
-                   seed: int = 0) -> pd.DataFrame:
+def build_features(
+    g: pd.DataFrame, weather: pd.DataFrame, total_rt: np.ndarray, seed: int = 0
+) -> pd.DataFrame:
     """Features for forecasting day D at 22:00 on D-1 (mirrors step5 forecasts(), Xw set).
 
     Deviation from step5: load/tmean/himax/rain use the 24 h window 22:00 D-2..21:00 D-1, not the
@@ -170,5 +175,6 @@ def train_forecasters(g: pd.DataFrame, X: pd.DataFrame) -> DailyForecasts:
     fit_predict(TRAINING_MONTHS_OCT_DEC, ok & (month >= 10))
     for m in range(1, 10):
         fit_predict([k for k in range(1, 10) if k != m], ok & (month == m))
-    return DailyForecasts(ai=ai, calendar=calendar, training_months=training_months,
-                          eligible=g.index[ok])
+    return DailyForecasts(
+        ai=ai, calendar=calendar, training_months=training_months, eligible=g.index[ok]
+    )

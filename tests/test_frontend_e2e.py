@@ -43,6 +43,7 @@ def server():
                 time.sleep(0.5)
         else:
             raise RuntimeError("server did not become ready in 60 s")
+        assert proc.poll() is None, "our uvicorn died; a stale server may own the port"
         yield BASE
     finally:
         proc.terminate()

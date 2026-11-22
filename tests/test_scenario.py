@@ -52,4 +52,6 @@ def test_multiplier_scales_room_part_only_and_forecast_unscaled(bank, P):
 
 def test_actual_need_matches_step5_daily_table_for_weekday(bank, P):
     s = scenario.build_scenario(bank, "weekday", 31.0, P)
-    assert s.actual_need_rth == pytest.approx(bank.daily.loc[pd.Timestamp(s.source_date), "need_rth"])
+    assert s.actual_need_rth == pytest.approx(
+        bank.daily.loc[pd.Timestamp(s.source_date), "need_rth"]
+    )

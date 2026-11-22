@@ -25,6 +25,7 @@ def wait_ready(proc):
     while time.time() < deadline:
         try:
             urllib.request.urlopen(f"{BASE}/health", timeout=2)
+            assert proc.poll() is None, "our uvicorn died; a stale server may own the port"
             return
         except OSError:
             if proc.poll() is not None:

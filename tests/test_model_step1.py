@@ -21,13 +21,19 @@ def test_classifier_trained_jan_sep_scores_oct_dec():
 def test_no_classifier_feature_uses_t_plus_3_or_later():
     w = model.load_weather()
     assert len(w) == 8784
-    assert "target" not in model.CLASSIFIER_FEATURES and "cls_ahead" not in model.CLASSIFIER_FEATURES
+    assert (
+        "target" not in model.CLASSIFIER_FEATURES and "cls_ahead" not in model.CLASSIFIER_FEATURES
+    )
     # every feature at row t equals a value computed from row t alone: perturb rows t+1.. and recompute
     w2 = w.copy()
     w2.loc[100:, ["temp", "rh", "cloud", "sw_rad", "wind", "rain"]] += 5.0
     from app.legacy import step1_model as s1
+
     cols = ["time", "temp", "rh", "cloud", "sw_rad", "wind", "rain"]
     f1 = s1.add_features(w[cols])
     f2 = s1.add_features(w2[cols])
-    assert (f1.loc[:99, model.CLASSIFIER_FEATURES].values == f2.loc[:99, model.CLASSIFIER_FEATURES].values).all()
+    assert (
+        f1.loc[:99, model.CLASSIFIER_FEATURES].values
+        == f2.loc[:99, model.CLASSIFIER_FEATURES].values
+    ).all()
     assert (f1["target"].iloc[:97] == f1["cls"].shift(-3).iloc[:97]).all()  # target is exactly t+3

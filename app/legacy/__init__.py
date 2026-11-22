@@ -8,8 +8,8 @@ import sys
 from pathlib import Path
 
 SCS_DIR = Path(__file__).resolve().parents[2] / "scs"
-if sys.path[0] != str(SCS_DIR):
-    sys.path.insert(0, str(SCS_DIR))
+if str(SCS_DIR) not in sys.path:
+    sys.path.append(str(SCS_DIR))
 
 import step1_model
 import step2_simulate

@@ -30,6 +30,10 @@ def _num(x: float, round_values: bool) -> float:
     return round(float(x), 1) if round_values else float(x)
 
 
+def _over_charged(left_21: float, reached: float) -> bool:
+    return left_21 > max(1000.0, 0.25 * reached)
+
+
 def _message(
     status: str,
     cap: float,
@@ -38,6 +42,8 @@ def _message(
     daytime_ec_hours: int,
     target: float,
     reached: float,
+    actual: float,
+    left_21: float,
 ) -> str:
     n = daytime_ec_hours
     hours = f"{n} daytime hour{'s' if n != 1 else ''}"
@@ -58,6 +64,11 @@ def _message(
         msg = "Plan covers tomorrow with the chosen safety margin."
     if target - reached > 1:
         msg += f" Chillers can only charge the tank to {reached:,.0f} RTh by 08:00."
+    if status != "shortfall" and _over_charged(left_21, reached):
+        msg += (
+            f" In this 2024 replay the day needed {actual:,.0f} RTh, so {left_21:,.0f} RTh "
+            "is still unused in the tank at 21:00."
+        )
     return msg
 
 
@@ -95,8 +106,8 @@ def _assumptions(sc, preset: str, levels: dict) -> list[str]:
             "spent, so strategies that charge more end the day with more stored (always fill "
             f"{levels['always_full']:,.0f} RTh, rule {levels['calendar_rule']:,.0f} RTh, "
             f"AI {levels['ai_forecast']:,.0f} RTh) and the % overstates the AI's saving. "
-            "Over Oct–Dec the year-long simulation gives the AI about −9 % vs always fill "
-            "and about −2 % vs the weekday/weekend rule."
+            "Over Oct–Dec the year-long simulation (code-pack step5 forecaster) gives the AI "
+            "about −9 % vs always fill and about −2 % vs the weekday/weekend rule."
         ),
         ("ASSUMPTION: one year of weather only (2024); no measured UTP/PMMD plant data."),
     ]
@@ -148,6 +159,9 @@ def build_response(bank: DayBank, req: dict, base_params: dict, round_values: bo
     capped = bool(ai_used * (1 + mg) > cap)
     shortfall = ai_sum["shortfall_rth"]
     status = "shortfall" if shortfall > 1e-6 else "capped" if capped else "ok"
+    reached = float(ai_run["tank_level_rth"][9])
+    left_21 = float(ai_run["tank_level_rth"][-1])
+    over_charged = status != "shortfall" and _over_charged(left_21, reached)
 
     hourly = []
     for i, label in enumerate(HOUR_LABELS):
@@ -176,6 +190,7 @@ def build_response(bank: DayBank, req: dict, base_params: dict, round_values: bo
             "daytime_ec_hours": ai_sum["daytime_ec_hours"],
             "shortfall_rth": n(shortfall),
             "status": status,
+            "over_charged": bool(over_charged),
             "message": _message(
                 status,
                 cap,
@@ -183,7 +198,9 @@ def build_response(bank: DayBank, req: dict, base_params: dict, round_values: bo
                 capped,
                 ai_sum["daytime_ec_hours"],
                 ai_target,
-                float(ai_run["tank_level_rth"][9]),
+                reached,
+                sc.actual_need_rth,
+                left_21,
             ),
         },
         "hourly": hourly,

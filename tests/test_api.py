@@ -66,14 +66,26 @@ def test_root_serves_html(client):
 
 
 @pytest.mark.slow
+def _check_finite(node, path):
+    if isinstance(node, dict):
+        for k, v in node.items():
+            _check_finite(v, f"{path}.{k}")
+    elif isinstance(node, list):
+        for i, v in enumerate(node):
+            _check_finite(v, f"{path}[{i}]")
+    elif node is None:
+        assert path.endswith(".vs_always_full_pct"), f"unexpected None at {path}"
+    elif isinstance(node, (int, float)) and not isinstance(node, bool):
+        assert math.isfinite(node), f"non-finite at {path}"
+
+
 def test_sweep_all_inputs_finite(client):
     for dt in ["weekday", "exam_week", "semester_break", "weekend"]:
         for t in np.arange(24, 38.01, 0.5):
             j = client.post(
                 "/recommend", json={"day_type": dt, "forecast_max_temp_c": float(t)}
             ).json()
-            nums = [v for h in j["hourly"] for v in h.values() if isinstance(v, (int, float))]
-            assert all(math.isfinite(v) for v in nums)
+            _check_finite(j, "$")
 
 
 def test_cold_start_under_60s(tmp_path):

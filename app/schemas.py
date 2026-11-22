@@ -46,6 +46,7 @@ class Recommendation(BaseModel):
     daytime_ec_hours: int
     shortfall_rth: float
     status: Literal["ok", "shortfall", "capped"]
+    over_charged: bool
     message: str
 
 

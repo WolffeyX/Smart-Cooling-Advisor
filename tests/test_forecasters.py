@@ -23,7 +23,11 @@ def fx():
 def test_every_feature_has_provenance_and_none_is_same_day_observed(fx):
     assert list(fx.X.columns) == list(model.FEATURE_PROVENANCE)
     assert set(model.FEATURE_PROVENANCE.values()) <= {
-        "observed_lag1", "observed_lag7", "calendar", "simulated_dayahead"}
+        "observed_lag1",
+        "observed_lag7",
+        "calendar",
+        "simulated_dayahead",
+    }
 
 
 def _rebuild(fx, w2, rt2):
@@ -37,7 +41,9 @@ def _perturb(fx, hours, day):
     sel = (w2["time"].dt.normalize() == day) & w2["time"].dt.hour.isin(hours)
     w2.loc[sel, ["temp", "rh", "rain"]] += 5
     rt2[sel.values] += 5
-    return step1_model.add_features(w2.drop(columns=["hi", "cls", "hour", "month", "weekday", "target"])), rt2
+    return step1_model.add_features(
+        w2.drop(columns=["hi", "cls", "hour", "month", "weekday", "target"])
+    ), rt2
 
 
 def test_features_use_only_hours_before_22h_of_previous_day(fx):

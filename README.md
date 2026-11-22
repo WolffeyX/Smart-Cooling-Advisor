@@ -41,7 +41,7 @@ python scripts/screenshots.py   # regenerate docs/screenshots/*.png
 2. A request (day type, forecast max temperature, margin, tank size and level, forecast error) selects the nearest real 2024 day of that day type (a day in Oct-Dec within 1 C is preferred).
 3. For that day three dispatches are simulated hour by hour: always fill the tank, the weekday/weekend rule, and the AI forecast. The API returns the recommendation, hourly profile and a comparison table.
 
-Hot weekday note: asking for "weekday, 34 C" picks the hottest Oct-Dec weekday, 23 Oct 2024 (33.2 C), because 34 C is beyond any weekday in the data. That is expected. The tank is too small there, so every strategy fills it nearly completely.
+Hot weekday note: asking for "weekday, 34 C" picks the hottest Oct-Dec weekday, 23 Oct 2024 (33.2 C), because 34 C is beyond any weekday in the data. That is expected. In the screenshot the AI charges 9,229 RTh and leaves 848 RTh in the tank at 21:00, using 5,936 kWh of electric-chiller energy with no daytime electric-chiller hours. The weekday/weekend rule charges less (8,232 RTh), runs the electric chillers 1 daytime hour and uses 5,412 kWh, so on this one day the rule beats the AI by about 10 %. That is a single-day effect (cold left in the tank at 21:00 counts as spent); the Oct-Dec season figure is about −2 % vs the rule (code-pack step5 forecaster).
 
 ## Project layout
 
@@ -80,6 +80,6 @@ Hot weekday note: asking for "weekday, 34 C" picks the hottest Oct-Dec weekday, 
 
 ## Screenshots
 
-| Cool weekday (29 C, 19 Nov 2024) | Semester break (31 C, 2 Oct 2024) |
+| Cool weekday (29 C, 19 Nov 2024) | Semester break (31 C, 2 Oct 2024): the AI over-charges, and the note says 7,040 RTh is still unused at 21:00 |
 |---|---|
 | ![](docs/screenshots/cool_weekday.png) | ![](docs/screenshots/semester_break.png) |

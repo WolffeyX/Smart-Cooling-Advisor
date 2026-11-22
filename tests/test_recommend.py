@@ -128,3 +128,16 @@ def test_message_shortfall(utp_bank):
     assert rec["status"] == "shortfall" and rec["shortfall_rth"] > 0
     assert rec["shortfall_rth"] == pytest.approx(sum(h["unmet_rt"] for h in r["hourly"]))
     assert "even with all electric chillers running" in rec["message"]
+
+
+def test_semester_break_over_charge_is_flagged(bank):
+    rec = run(bank, day_type="semester_break")["recommendation"]
+    assert "unused" in rec["message"]
+    assert rec["over_charged"] is True
+
+
+@pytest.mark.parametrize("temp", [31.0, 34.0])
+def test_weekday_not_flagged_over_charged(bank, temp):
+    rec = run(bank, forecast_max_temp_c=temp)["recommendation"]
+    assert "unused" not in rec["message"]
+    assert rec["over_charged"] is False

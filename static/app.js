@@ -117,7 +117,7 @@
     note.textContent = "";
     let cls = "ok";
     if (r.shortfall_rth > 0 || r.status === "shortfall") cls = "bad";
-    else if (r.capped || r.daytime_ec_hours > 0) cls = "warn";
+    else if (r.capped || r.over_charged || r.daytime_ec_hours > 0) cls = "warn";
     note.className = `status ${cls}`;
     if (cls === "bad") {
       const icon = document.createElement("span");
