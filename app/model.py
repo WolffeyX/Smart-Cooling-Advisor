@@ -3,10 +3,12 @@
 import hashlib
 import json
 import os
+from dataclasses import dataclass
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.metrics import accuracy_score
 
 from app.config import DATA_DIR, WEATHER_CSV
@@ -75,3 +77,84 @@ def campus_load_frame(weather: pd.DataFrame, params: dict,
     finally:
         tmp.unlink(missing_ok=True)
     return frame
+
+
+# ---------------------------------------------------------------- daily forecasters (no leakage)
+FEATURE_PROVENANCE: dict[str, str] = {
+    "need_today": "observed_lag1",
+    "load_today": "observed_lag1",
+    "tmean_today": "observed_lag1",
+    "himax_today": "observed_lag1",
+    "rain_today": "observed_lag1",
+    "need_lastweek": "observed_lag7",
+    "dow_tomorrow": "calendar",
+    "weekday_tomorrow": "calendar",
+    "month": "calendar",
+    "fc_tmax": "simulated_dayahead",
+    "fc_sw": "simulated_dayahead",
+    "fc_rain": "simulated_dayahead",
+}
+TRAINING_MONTHS_OCT_DEC = list(range(1, 10))
+
+
+def build_features(g: pd.DataFrame, seed: int = 0) -> pd.DataFrame:
+    """Features for forecasting day D at 22:00 on D-1 (mirrors step5 forecasts(), Xw set).
+
+    Observed values are lagged (shift 1 / 7); the day-ahead weather forecast is the actual plus
+    simulated NWP-like noise, drawn in step5's order (tmax, sw, rain) over the full length of g.
+    """
+    rng = np.random.default_rng(seed)
+    X = pd.DataFrame(index=g.index)
+    X["need_today"] = g["need_rth"].shift(1)
+    X["load_today"] = g["load_rth"].shift(1)
+    X["tmean_today"] = g["tmean"].shift(1)
+    X["himax_today"] = g["himax"].shift(1)
+    X["rain_today"] = g["rain"].shift(1)
+    X["need_lastweek"] = g["need_rth"].shift(7)
+    X["dow_tomorrow"] = g["dow"]
+    X["weekday_tomorrow"] = g["weekday"].astype(int)
+    X["month"] = g["month"]
+    X["fc_tmax"] = g["tmax"] + rng.normal(0, 1.0, len(g))
+    X["fc_sw"] = g["sw"] * rng.normal(1.0, 0.15, len(g)).clip(0.5, 1.5)
+    X["fc_rain"] = g["rain"] * rng.normal(1.0, 0.5, len(g)).clip(0, 3)
+    return X[list(FEATURE_PROVENANCE)]
+
+
+@dataclass
+class DailyForecasts:
+    ai: pd.Series
+    calendar: pd.Series
+    training_months: dict
+    eligible: pd.DatetimeIndex
+
+
+def _rf() -> RandomForestRegressor:
+    return RandomForestRegressor(400, min_samples_leaf=3, random_state=42, n_jobs=-1)
+
+
+def train_forecasters(g: pd.DataFrame, X: pd.DataFrame) -> DailyForecasts:
+    """Out-of-sample forecasts for every feature-complete day.
+
+    Oct-Dec: one model trained on Jan-Sep. Jan-Sep month m: a model trained on the other
+    Jan-Sep months (leave-one-month-out), so no day is predicted by a model that saw its month.
+    """
+    ok = X.notna().all(axis=1)
+    month = pd.Series(g.index.month, index=g.index)
+    ai = pd.Series(np.nan, index=g.index)
+    calendar = pd.Series(np.nan, index=g.index)
+    training_months: dict = {}
+
+    def fit_predict(train_months: list[int], target_mask: pd.Series) -> None:
+        train = ok & month.isin(train_months)
+        m = _rf().fit(X[train], g.loc[train, "need_rth"])
+        ai[target_mask] = m.predict(X[target_mask])
+        cal = g[train].groupby("dow")["need_rth"].mean()
+        calendar[target_mask] = g.loc[target_mask, "dow"].map(cal)
+        for day in g.index[target_mask]:
+            training_months[day] = list(train_months)
+
+    fit_predict(TRAINING_MONTHS_OCT_DEC, ok & (month >= 10))
+    for m in range(1, 10):
+        fit_predict([k for k in range(1, 10) if k != m], ok & (month == m))
+    return DailyForecasts(ai=ai, calendar=calendar, training_months=training_months,
+                          eligible=g.index[ok])
