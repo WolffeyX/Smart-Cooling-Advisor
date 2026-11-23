@@ -5,3 +5,10 @@ __pycache__/
 .ruff_cache/
 data/campus_load_*.csv
 data/decision_log*.csv
+.superpowers/
+node_modules/
+app/package-lock.json
+docs/study_note*
+docs/PROMPT_*.md
+docs/plan.md
+docs/superpowers/
