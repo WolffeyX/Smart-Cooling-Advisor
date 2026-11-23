@@ -10,11 +10,24 @@ A walkthrough of every control and panel, with screenshots: [docs/user_guide.pdf
 
 ## Install
 
+Needs Python 3.12 or newer (3.10 fails to install).
+
+Windows:
+
 ```
 python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
 playwright install chromium     # only needed for the browser tests and screenshots
+```
+
+Mac / Linux:
+
+```
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+playwright install chromium
 ```
 
 ## Run
@@ -66,7 +79,7 @@ Hot weekday note: asking for "weekday, 34 C" picks the hottest Oct-Dec weekday, 
 - `static/` the one-page dashboard (plain HTML/JS/CSS)
 - `tests/` unit, API and Playwright tests
 - `scripts/screenshots.py` starts the server on port 8765 and captures the screenshots
-- `docs/` prompts, plan, screenshots, `user_guide.pdf` and `guide/` (the HTML guide and its images)
+- `docs/` screenshots, `user_guide.pdf` and `guide/` (the HTML guide and its images)
 - `data/decision_log.csv` the operator decision log (created on first Approve or Adjust)
 - `scripts/build_guide_pdf.py` prints the HTML guide to `docs/user_guide.pdf`
 
@@ -98,6 +111,6 @@ Hot weekday note: asking for "weekday, 34 C" picks the hottest Oct-Dec weekday, 
 
 ## Screenshots
 
-| Cool weekday (29 C, 19 Nov 2024) | Semester break (31 C, 2 Oct 2024): the AI over-charges, and the note says 7,040 RTh is still unused at 21:00 |
-|---|---|
-| ![](docs/screenshots/cool_weekday.png) | ![](docs/screenshots/semester_break.png) |
+| Cool weekday (29 C, 19 Nov 2024)       | Semester break (31 C, 2 Oct 2024): the AI over-charges, and the note says 7,040 RTh is still unused at 21:00 |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| ![](docs/screenshots/cool_weekday.png) | ![](docs/screenshots/semester_break.png)                                                                     |
